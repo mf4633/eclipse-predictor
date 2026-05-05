@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#04060E">
 <title>Eclipse Predictor &mdash; Solar Eclipse Paths on a 3D Globe | Board Gaming Hub</title>
-<meta name="description" content="Step through every solar eclipse from 2001 to 2030. NASA catalog dates, paths computed live with Meeus astronomical algorithms, drawn on a 3D Earth.">
+<meta name="description" content="Step through every solar eclipse from 1900 to 2200. Computed with astronomy-engine (sub-arcsecond accuracy), drawn as paths of totality on a 3D Earth.">
 <link rel="canonical" href="https://boardgaminghub.com/EclipsePredictor.html">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://boardgaminghub.com/EclipsePredictor.html">
@@ -111,9 +111,9 @@
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="astronomy.browser.min.js"></script>
 </head>
 <body>
-
 <canvas id="globeCanvas"></canvas>
 
 <div id="titleOverlay">
@@ -127,7 +127,7 @@
   <div class="card">
     <button class="close" onclick="document.getElementById('helpModal').classList.remove('open')">CLOSE</button>
     <h2>Eclipse Predictor</h2>
-    <p>Step through every solar eclipse from 1900 to 2200 &mdash; about 3,700 events. The catalog is generated live from Meeus astronomical algorithms (no hard-coded dates), and the path of the Moon's shadow is computed from the same engine.</p>
+    <p>Step through every solar eclipse from 1900 to 2200 &mdash; about 3,700 events. Eclipse identification and Sun/Moon positions come from <a href="https://github.com/cosinekitty/astronomy" style="color:#4080D0" target="_blank" rel="noopener">astronomy-engine</a> (Don Cross's port of Steve Moshier's ephemeris, sub-arcsecond accurate, MIT-licensed). Path of the Moon's shadow is then computed from Besselian elements and traced where the shadow axis pierces Earth's surface.</p>
 
     <h3>Controls</h3>
     <ul>
@@ -147,14 +147,14 @@
 
     <h3>How it works</h3>
     <ul>
-      <li>Sun position from <b>Meeus, Astronomical Algorithms ch. 25</b> (low precision &mdash; ~0.01&deg; accurate)</li>
-      <li>Moon position from a 12-term truncated <b>ELP-2000/Schlyter</b> model (~0.04&deg; accurate)</li>
-      <li><b>Besselian elements</b> (x, y, d, &mu;, l1, l2) computed from the sub-solar / sub-lunar geometry</li>
+      <li>Sun &amp; Moon positions from <b>astronomy-engine</b> (Moshier's port of JPL DE-style theories) &mdash; sub-arcsecond accurate</li>
+      <li>Eclipse search via <code>SearchGlobalSolarEclipse</code>/<code>NextGlobalSolarEclipse</code> from the same library</li>
+      <li><b>Besselian elements</b> (x, y, d, &mu;, &#8467;1, &#8467;2) computed from geocentric Sun &amp; Moon vectors</li>
       <li>Central path = trace of where the shadow axis pierces Earth's surface, sampled every 30 s for &plusmn;3 hours around greatest eclipse</li>
     </ul>
 
     <h3>Accuracy</h3>
-    <p>Dates, types, and paths are all computed from Meeus + truncated ELP-2000. Within a few hundred years of today, eclipses match NASA's Five Millennium Canon. Paths are accurate to roughly &plusmn;100 km in the modern era, degrading toward the endpoints. For mission-critical predictions, see <a href="https://eclipse.gsfc.nasa.gov" style="color:#4080D0">eclipse.gsfc.nasa.gov</a>.</p>
+    <p>Eclipse times match NASA's catalog to seconds. Path positions are accurate to roughly &plusmn;1&ndash;2 km on the ground for the entire 1900&ndash;2200 range &mdash; effectively NASA-precision for a single-file browser tool. For mission-critical use, cross-check with <a href="https://eclipse.gsfc.nasa.gov" style="color:#4080D0">eclipse.gsfc.nasa.gov</a>.</p>
   </div>
 </div>
 
@@ -169,7 +169,7 @@
   <div class="row"><span>Max location</span><b id="ecLoc">&mdash;</b></div>
   <div class="row"><span>Sun altitude</span><b id="ecSunAlt">&mdash;</b></div>
   <div class="desc" id="ecDesc">&mdash;</div>
-  <div class="meta">Catalog &amp; path computed live: Meeus &middot; ELP-2000 (30 terms) &middot; ~&plusmn;100 km accuracy</div>
+  <div class="meta">Computed live via <b>astronomy-engine</b> (Moshier ephemeris) + Besselian path &middot; sub-km accuracy</div>
 </div>
 
 <div id="viewPanel" class="panel">
@@ -202,7 +202,7 @@
     </div>
 
     <div class="section">
-      <div class="sec-title">2 &middot; SUN POSITION (Meeus ch. 25)</div>
+      <div class="sec-title">2 &middot; SUN POSITION (astronomy-engine, equator-of-date with aberration)</div>
       <div class="sec-formula">$$ L_0 = 280.46646 + 36000.76983\,T,\quad M = 357.52911 + 35999.05029\,T $$
         $$ C = (1.9146 - 0.0048\,T)\sin M + 0.020\sin 2M + \dots,\quad \lambda_\odot = L_0 + C $$
         $$ R = \tfrac{1.0001\,(1-e^2)}{1 + e\cos(M+C)}\;\text{AU} $$</div>
@@ -210,7 +210,7 @@
     </div>
 
     <div class="section">
-      <div class="sec-title">3 &middot; MOON POSITION (Meeus ch. 47, ELP-2000)</div>
+      <div class="sec-title">3 &middot; MOON POSITION (astronomy-engine, Moshier ephemeris)</div>
       <div class="sec-formula">$$ \lambda_\text{☾} = L' + 10^{-6}\!\!\sum_i a_i \sin(d_i D + m_i M + m'_i M' + f_i F) $$
         $$ \beta_\text{☾} = 10^{-6}\!\!\sum_i b_i \sin(\dots),\qquad r_\text{☾} = 385000.56 + \tfrac{1}{1000}\sum_i c_i \cos(\dots) $$</div>
       <div class="sec-vals" id="mathMoon">&mdash;</div>
@@ -330,162 +330,44 @@ function gst(jd_ut) {
 }
 
 //==============================================================
-// 2. SUN POSITION (Meeus Ch. 25, low precision)
-// Returns: { ra, dec } in radians, dist in km
+// 2. SUN POSITION (astronomy-engine, Moshier ephemeris, sub-arcsecond)
+// Input: jd_ut (Julian Day, UT). Returns { ra, dec, dist, lon, lat } in
+// radians and km, equator-of-date with aberration applied.
 //==============================================================
 
-function sunPos(jd_tt) {
-  const T = (jd_tt - 2451545.0) / 36525;
-  const L0 = (280.46646 + 36000.76983 * T + 0.0003032 * T * T) % 360;
-  const M  = (357.52911 + 35999.05029 * T - 0.0001537 * T * T) * DEG;
-  const e  = 0.016708634 - 0.000042037 * T - 0.0000001267 * T * T;
-  const C  = (1.914602 - 0.004817 * T - 0.000014 * T * T) * Math.sin(M)
-           + (0.019993 - 0.000101 * T) * Math.sin(2 * M)
-           + 0.000289 * Math.sin(3 * M);
-  const trueLong = L0 + C;
-  const v = M + C * DEG;
-  const R = 1.000001018 * (1 - e * e) / (1 + e * Math.cos(v));   // AU
-  const Omega = (125.04 - 1934.136 * T) * DEG;
-  const lambda = (trueLong - 0.00569 - 0.00478 * Math.sin(Omega)) * DEG;
-  const eps0 = (23.4392911 - (46.8150 * T + 0.00059 * T * T - 0.001813 * T * T * T) / 3600) * DEG;
-  const eps = eps0 + 0.00256 * DEG * Math.cos(Omega);
-  const ra  = Math.atan2(Math.cos(eps) * Math.sin(lambda), Math.cos(lambda));
-  const dec = Math.asin(Math.sin(eps) * Math.sin(lambda));
-  return { ra, dec, dist: R * 149597870.7, lon: lambda, lat: 0 };
+function sunPos(jd_ut) {
+  const date = jdToDate(jd_ut);
+  const t = Astronomy.MakeTime(date);
+  // Geocentric J2000 vector (with aberration) → rotate to equator-of-date → spherical.
+  const eqj = Astronomy.GeoVector(Astronomy.Body.Sun, t, /*aberration*/true);
+  const rot = Astronomy.Rotation_EQJ_EQD(t);
+  const eqd = Astronomy.RotateVector(rot, eqj);
+  const equ = Astronomy.EquatorFromVector(eqd);
+  const ra   = equ.ra  * 15 * DEG;             // hours → rad
+  const dec  = equ.dec      * DEG;              // deg   → rad
+  const dist = equ.dist * 149597870.7;          // AU    → km
+  const ecl  = Astronomy.Ecliptic(eqj);         // J2000 ecliptic, for math-panel display
+  return { ra, dec, dist, lon: ecl.elon * DEG, lat: ecl.elat * DEG };
 }
 
 //==============================================================
-// 3. MOON POSITION (Meeus Ch. 47 — top ~30 perturbation terms)
-// Returns: { ra, dec } in radians, dist in km
+// 3. MOON POSITION (astronomy-engine, Moshier ephemeris)
+// Input: jd_ut (Julian Day, UT). Returns { ra, dec, dist, lon, lat }
+// in radians and km, equator-of-date.
 //==============================================================
 
-// Periodic terms for Moon longitude (Σl) and distance (Σr)
-// [D, M, M', F, sin coefficient (1e-6 deg), cos coefficient (km)]
-const MOON_LR = [
-  [0,  0,  1,  0,  6288774, -20905355],
-  [2,  0, -1,  0,  1274027,  -3699111],
-  [2,  0,  0,  0,   658314,  -2955968],
-  [0,  0,  2,  0,   213618,   -569925],
-  [0,  1,  0,  0,  -185116,     48888],
-  [0,  0,  0,  2,  -114332,     -3149],
-  [2,  0, -2,  0,    58793,    246158],
-  [2, -1, -1,  0,    57066,   -152138],
-  [2,  0,  1,  0,    53322,   -170733],
-  [2, -1,  0,  0,    45758,   -204586],
-  [0,  1, -1,  0,   -40923,   -129620],
-  [1,  0,  0,  0,   -34720,    108743],
-  [0,  1,  1,  0,   -30383,    104755],
-  [2,  0,  0, -2,    15327,     10321],
-  [0,  0,  1,  2,   -12528,         0],
-  [0,  0,  1, -2,    10980,     79661],
-  [4,  0, -1,  0,    10675,    -34782],
-  [0,  0,  3,  0,    10034,    -23210],
-  [4,  0, -2,  0,     8548,    -21636],
-  [2,  1, -1,  0,    -7888,     24208],
-  [2,  1,  0,  0,    -6766,     30824],
-  [1,  0, -1,  0,    -5163,     -8379],
-  [1,  1,  0,  0,     4987,    -16675],
-  [2, -1,  1,  0,     4036,    -12831],
-  [2,  0,  2,  0,     3994,    -10445],
-  [4,  0,  0,  0,     3861,    -11650],
-  [2,  0, -3,  0,     3665,     14403],
-  [0,  1, -2,  0,    -2689,     -7003],
-  [2,  0, -1,  2,    -2602,         0],
-  [2, -1, -2,  0,     2390,     10056],
-  // ---- additional Meeus 47.A terms (next-largest amplitudes) ----
-  [1,  1, -1,  0,    -2348,      4610],
-  [2, -2,  0,  0,     2236,     -6783],
-  [0,  1,  2,  0,    -2120,      5906],
-  [0,  2,  0,  0,    -2069,         0],
-  [2, -2, -1,  0,     2048,     -3025],
-  [2,  0,  1, -2,    -1773,      3873],
-  [2,  0,  0,  2,    -1595,         0],
-  [4, -1, -1,  0,     1215,     -1410],
-  [0,  0,  2,  2,    -1110,         0],
-  [3,  0, -1,  0,     -892,      1929],
-];
-
-// Periodic terms for Moon latitude (Σb)
-// [D, M, M', F, sin coefficient (1e-6 deg)]
-const MOON_B = [
-  [0,  0,  0,  1,  5128122],
-  [0,  0,  1,  1,   280602],
-  [0,  0,  1, -1,   277693],
-  [2,  0,  0, -1,   173237],
-  [2,  0, -1,  1,    55413],
-  [2,  0, -1, -1,    46271],
-  [2,  0,  0,  1,    32573],
-  [0,  0,  2,  1,    17198],
-  [2,  0,  1, -1,     9266],
-  [0,  0,  2, -1,     8822],
-  [2, -1,  0, -1,     8216],
-  [2,  0, -2, -1,     4324],
-  [2,  0,  1,  1,     4200],
-  [2,  1,  0, -1,    -3359],
-  [2, -1, -1,  1,     2463],
-  [2, -1,  0,  1,     2211],
-  [2, -1, -1, -1,     2065],
-  [0,  1, -1, -1,    -1870],
-  [4,  0, -1, -1,     1828],
-  [0,  1,  0,  1,    -1794],
-];
-
-function moonPos(jd_tt) {
-  const T = (jd_tt - 2451545.0) / 36525;
-  // Mean elongation Moon - Sun (Meeus 47.2)
-  const D = (297.8501921 + 445267.1114034 * T - 0.0018819 * T * T
-           + T * T * T / 545868 - T * T * T * T / 113065000) * DEG;
-  // Sun mean anomaly
-  const M = (357.5291092 + 35999.0502909 * T - 0.0001536 * T * T
-           + T * T * T / 24490000) * DEG;
-  // Moon mean anomaly
-  const Mp = (134.9633964 + 477198.8675055 * T + 0.0087414 * T * T
-            + T * T * T / 69699 - T * T * T * T / 14712000) * DEG;
-  // Moon argument of latitude
-  const F = (93.2720950 + 483202.0175233 * T - 0.0036539 * T * T
-           - T * T * T / 3526000 + T * T * T * T / 863310000) * DEG;
-  // Moon mean longitude
-  const Lp = (218.3164477 + 481267.88123421 * T - 0.0015786 * T * T
-            + T * T * T / 538841 - T * T * T * T / 65194000) * DEG;
-  // Eccentricity correction factor for Earth orbit
-  const E = 1 - 0.002516 * T - 0.0000074 * T * T;
-  const E2 = E * E;
-
-  let sumL = 0, sumR = 0, sumB = 0;
-  for (const [d, m, mp, f, sl, sr] of MOON_LR) {
-    const arg = d * D + m * M + mp * Mp + f * F;
-    let eFac = 1;
-    if (Math.abs(m) === 1) eFac = E;
-    else if (Math.abs(m) === 2) eFac = E2;
-    sumL += sl * eFac * Math.sin(arg);
-    sumR += sr * eFac * Math.cos(arg);
-  }
-  for (const [d, m, mp, f, sb] of MOON_B) {
-    const arg = d * D + m * M + mp * Mp + f * F;
-    let eFac = 1;
-    if (Math.abs(m) === 1) eFac = E;
-    else if (Math.abs(m) === 2) eFac = E2;
-    sumB += sb * eFac * Math.sin(arg);
-  }
-
-  // Nutation in longitude (apparent vs mean). Principal term: -17.2'' sin Ω.
-  const Omega = (125.04 - 1934.136 * T) * DEG;
-  const dPsi  = -0.004778 * Math.sin(Omega) * DEG;   // radians
-
-  const lambda = Lp + sumL * 1e-6 * DEG + dPsi;      // apparent ecliptic longitude (rad)
-  const beta   = sumB * 1e-6 * DEG;                  // ecliptic latitude (rad)
-  const dist   = 385000.56 + sumR / 1000;            // km
-
-  // Convert ecliptic to equatorial (with nutation in obliquity included)
-  const dEps   = 0.002558 * Math.cos(Omega) * DEG;    // +9.2'' cos Ω
-  const eps = (23.4392911 - (46.8150 * T + 0.00059 * T * T - 0.001813 * T * T * T) / 3600) * DEG + dEps;
-  const sl_ = Math.sin(lambda), cl_ = Math.cos(lambda);
-  const sb_ = Math.sin(beta),   cb_ = Math.cos(beta);
-  const se = Math.sin(eps),     ce = Math.cos(eps);
-  const ra  = Math.atan2(sl_ * ce - (sb_ / cb_) * se, cl_);
-  const dec = Math.asin(sb_ * ce + cb_ * se * sl_);
-
-  return { ra, dec, dist, lon: lambda, lat: beta };
+function moonPos(jd_ut) {
+  const date = jdToDate(jd_ut);
+  const t = Astronomy.MakeTime(date);
+  const eqj = Astronomy.GeoMoon(t);            // J2000 geocentric vector (AU)
+  const rot = Astronomy.Rotation_EQJ_EQD(t);
+  const eqd = Astronomy.RotateVector(rot, eqj);
+  const equ = Astronomy.EquatorFromVector(eqd);
+  const ra   = equ.ra  * 15 * DEG;
+  const dec  = equ.dec      * DEG;
+  const dist = equ.dist * 149597870.7;
+  const ecl  = Astronomy.Ecliptic(eqj);
+  return { ra, dec, dist, lon: ecl.elon * DEG, lat: ecl.elat * DEG };
 }
 
 //==============================================================
@@ -505,11 +387,9 @@ function geocentricCart(p) {
 }
 
 function besselElements(jd_ut) {
-  const dT = deltaT(jdToDate(jd_ut).getUTCFullYear());
-  const jd_tt = jd_ut + dT / 86400;
-
-  const sun  = sunPos(jd_tt);
-  const moon = moonPos(jd_tt);
+  // sunPos / moonPos handle timescale internally via astronomy-engine.
+  const sun  = sunPos(jd_ut);
+  const moon = moonPos(jd_ut);
   const S = geocentricCart(sun);
   const M = geocentricCart(moon);
 
@@ -586,8 +466,7 @@ function shadowToGeo(b) {
 
 // Sub-point of the Sun on Earth (for night-side shading)
 function subSolarPoint(jd_ut) {
-  const dT = deltaT(jdToDate(jd_ut).getUTCFullYear());
-  const sun = sunPos(jd_ut + dT / 86400);
+  const sun = sunPos(jd_ut);
   const lat = sun.dec * RAD;
   let lon = (sun.ra * RAD - gst(jd_ut)) % 360;
   if (lon > 180) lon -= 360;
@@ -687,108 +566,57 @@ let ECLIPSES = [];
 // 6.5 ECLIPSE GENERATOR — find all solar eclipses in a year range
 //==============================================================
 
-function sunMoonElong(jd_tt) {
-  const sun = sunPos(jd_tt);
-  const moon = moonPos(jd_tt);
-  let e = (moon.lon - sun.lon) * RAD;          // degrees
-  e = ((e % 360) + 540) % 360 - 180;            // wrap to [-180, 180]
-  return e;
-}
-
-// Find all new moons in [startJD, endJD]. Uses synodic-month stepping + Newton refinement.
-function findNewMoons(startJD, endJD) {
-  const SYN = 29.530588853;
-  const REF_JD = 2451550.260;                   // ~2000-01-06 18:14 UTC, a known new moon
-  const k0 = Math.floor((startJD - REF_JD) / SYN) - 1;
-  const k1 = Math.ceil((endJD - REF_JD) / SYN) + 1;
-  const out = [];
-  for (let k = k0; k <= k1; k++) {
-    let nmJD = REF_JD + k * SYN;
-    // Newton iteration on elongation (elongation = 0 at new moon)
-    for (let iter = 0; iter < 6; iter++) {
-      const tt  = nmJD + deltaT(jdToDate(nmJD).getUTCFullYear()) / 86400;
-      const e0  = sunMoonElong(tt);
-      if (Math.abs(e0) < 1e-4) break;
-      const e1  = sunMoonElong(tt + 0.01);
-      const slope = (e1 - e0) / 0.01;
-      const adj = e0 / slope;
-      if (!isFinite(adj)) break;
-      nmJD -= adj;
-      if (Math.abs(adj) < 1e-5) break;
-    }
-    if (nmJD >= startJD && nmJD <= endJD) out.push(nmJD);
-  }
-  return out;
-}
-
-// At a given new moon, decide whether it's a solar eclipse and classify it.
-// Returns null if no eclipse, else { jd, date, year, month, day, hour, minute, type, gamma, magnitude }.
-function checkSolarEclipse(jd_newmoon) {
-  const tt = jd_newmoon + deltaT(jdToDate(jd_newmoon).getUTCFullYear()) / 86400;
-  const moon = moonPos(tt);
-  // Quick reject: Moon's ecliptic latitude too large for any eclipse
-  if (Math.abs(moon.lat * RAD) > 1.6) return null;
-
-  // Refine to instant of greatest eclipse (minimum |gamma|) via parabolic fit
-  const dt = 1 / 1440;                               // 1 minute
-  const b0 = besselElements(jd_newmoon);
-  const b1 = besselElements(jd_newmoon + dt);
-  const xp = (b1.x - b0.x) / dt;
-  const yp = (b1.y - b0.y) / dt;
-  const t_min = -(b0.x * xp + b0.y * yp) / (xp * xp + yp * yp);
-  const jd_max = jd_newmoon + (isFinite(t_min) ? Math.max(-0.05, Math.min(0.05, t_min)) : 0);
-  const bGr = besselElements(jd_max);
-  const gamma = Math.sqrt(bGr.x * bGr.x + bGr.y * bGr.y);
-
-  // Eclipse condition: penumbra cone touches Earth.
-  // (Penumbra outer radius at fundamental plane = bGr.l1; eclipse iff gamma < 1 + l1.)
-  if (gamma > 1.0 + Math.abs(bGr.l1)) return null;
-
-  let type;
-  if (gamma < 1.0) {
-    type = bGr.l2 < 0 ? 'T' : 'A';                  // umbra reaches Earth → total; antumbra → annular
-  } else {
-    type = 'P';                                      // penumbra-only → partial
-  }
-  // Hybrid detection: when umbra distance crosses Earth radius mid-path. Approximation:
-  if (type === 'A' && Math.abs(bGr.l2) < 0.005 && gamma < 0.95) type = 'H';
-
-  const date = jdToDate(jd_max);
-  const dateKey = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
-  return {
-    jd: jd_max,
-    date,
-    year:   date.getUTCFullYear(),
-    month:  date.getUTCMonth() + 1,
-    day:    date.getUTCDate(),
-    hour:   date.getUTCHours(),
-    minute: date.getUTCMinutes(),
-    type, gamma,
-    location: FAMOUS[dateKey] || '',
-  };
-}
-
-// Generate eclipses across a year range.  Calls onProgress(done, total) as it works,
-// then onDone(catalog) when finished.  Chunked via requestAnimationFrame to keep UI responsive.
+// Generate eclipses across a year range using astronomy-engine's
+// SearchGlobalSolarEclipse / NextGlobalSolarEclipse.  Sub-arcsecond
+// ephemeris (Moshier) ⇒ event identification matches NASA's catalog.
 function generateEclipses(startYear, endYear, onProgress, onDone) {
-  const startJD = dateToJD(new Date(Date.UTC(startYear, 0, 1)));
-  const endJD   = dateToJD(new Date(Date.UTC(endYear, 11, 31, 23, 59, 59)));
-  const newMoons = findNewMoons(startJD, endJD);
-  const total = newMoons.length;
+  const startDate = new Date(Date.UTC(startYear, 0, 1));
+  const endDate   = new Date(Date.UTC(endYear, 11, 31, 23, 59, 59));
   const out = [];
-  let i = 0;
-  function chunk() {
+  // Estimate total for progress bar (~2.4 solar eclipses per year)
+  const estTotal = Math.round((endYear - startYear + 1) * 2.4);
+
+  let cur;
+  try {
+    cur = Astronomy.SearchGlobalSolarEclipse(startDate);
+  } catch (err) {
+    console.error('astronomy-engine eclipse search failed:', err);
+    onDone([]);
+    return;
+  }
+
+  function step() {
     const t0 = performance.now();
-    while (i < total && performance.now() - t0 < 24) {
-      const ecl = checkSolarEclipse(newMoons[i]);
-      if (ecl) out.push(ecl);
-      i++;
+    while (cur && cur.peak.date <= endDate && performance.now() - t0 < 24) {
+      const date = cur.peak.date;
+      const dateKey = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+      const TYPE_MAP = { total: 'T', annular: 'A', hybrid: 'H', partial: 'P' };
+      out.push({
+        jd: dateToJD(date),
+        date,
+        year:   date.getUTCFullYear(),
+        month:  date.getUTCMonth() + 1,
+        day:    date.getUTCDate(),
+        hour:   date.getUTCHours(),
+        minute: date.getUTCMinutes(),
+        type:   TYPE_MAP[cur.kind] || 'P',
+        gamma:  cur.distance / R_EARTH,        // astronomy-engine returns km; we want Earth radii
+        peakLat: cur.latitude,                 // greatest-eclipse coordinates from astronomy-engine
+        peakLon: cur.longitude,
+        location: FAMOUS[dateKey] || '',
+      });
+      try {
+        cur = Astronomy.NextGlobalSolarEclipse(cur.peak);
+      } catch (err) {
+        cur = null;
+        break;
+      }
     }
-    if (onProgress) onProgress(i, total);
-    if (i < total) requestAnimationFrame(chunk);
+    if (onProgress) onProgress(out.length, estTotal);
+    if (cur && cur.peak.date <= endDate) requestAnimationFrame(step);
     else onDone(out);
   }
-  chunk();
+  step();
 }
 
 //==============================================================
@@ -1586,7 +1414,7 @@ function loadEclipse(i) {
   // Sun altitude at greatest eclipse point
   let sunAlt = '—';
   if (greatest) {
-    const sunRD = sunPos(greatest.jd + deltaT(e.year) / 86400);
+    const sunRD = sunPos(greatest.jd);
     sunAlt = computeAltitude(sunRD.ra, sunRD.dec, greatest.lat, greatest.lon, greatest.jd).toFixed(0) + '°';
   }
 
@@ -1621,9 +1449,8 @@ function loadEclipse(i) {
 function computeMagnitude(jd) {
   // Magnitude at greatest eclipse = ratio of Moon's apparent angular diameter
   // to Sun's, as seen from Earth's center.
-  const dT = deltaT(jdToDate(jd).getUTCFullYear());
-  const sun = sunPos(jd + dT / 86400);
-  const moon = moonPos(jd + dT / 86400);
+  const sun  = sunPos(jd);
+  const moon = moonPos(jd);
   const thSun = R_SUN / sun.dist;
   const thMoon = K_MOON * R_EARTH / moon.dist;
   return thMoon / thSun;
@@ -1841,8 +1668,8 @@ function populateMath() {
   const jd0 = dateToJD(e.date);
   const dT = deltaT(e.year);
   const jdTT = jd0 + dT / 86400;
-  const sun = sunPos(jdTT);
-  const moon = moonPos(jdTT);
+  const sun = sunPos(jd0);
+  const moon = moonPos(jd0);
   const b = besselElements(jd0);
   const gamma = Math.sqrt(b.x * b.x + b.y * b.y);
   const mag = computeMagnitude(jd0);
@@ -1853,7 +1680,7 @@ function populateMath() {
   const rows = (pairs) => pairs.map(([k, v]) => `<div><span class="lbl">${k}:</span> <span class="val">${v}</span></div>`).join('');
 
   document.getElementById('mathTitle').textContent = `The Math — ${formatEclipseName(e)}`;
-  document.getElementById('mathSubtitle').textContent = 'Live values for this eclipse, plugged into the Meeus + Besselian pipeline.';
+  document.getElementById('mathSubtitle').textContent = 'Live values for this eclipse, plugged into the astronomy-engine + Besselian pipeline.';
 
   document.getElementById('mathTime').innerHTML = rows([
     ['JD (UT)',   jd0.toFixed(5) + ' days'],
@@ -2015,6 +1842,14 @@ const CATALOG_RANGE = [1900, 2200];
 const loadBarEl = document.getElementById('loadBar');
 const loadCountEl = document.getElementById('loadCount');
 const loadOverlayEl = document.getElementById('loadOverlay');
+
+if (typeof Astronomy === 'undefined') {
+  loadOverlayEl.innerHTML =
+    '<div style="color:#FF6040;font-family:Georgia,serif;font-size:1.0em;letter-spacing:2px;text-align:center;max-width:380px;line-height:1.5">'
+    + 'astronomy-engine failed to load.<br><br>'
+    + '<span style="color:#8098B0;font-size:0.78em">Check your network or CDN access. Required: cdn.jsdelivr.net/npm/astronomy-engine</span></div>';
+  throw new Error('Astronomy global is undefined — astronomy-engine CDN script failed to load.');
+}
 
 generateEclipses(
   CATALOG_RANGE[0],

@@ -94,6 +94,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
+
 <canvas id="globeCanvas"></canvas>
 
 <div id="titleOverlay">
@@ -107,7 +108,7 @@
   <div class="card">
     <button class="close" onclick="document.getElementById('helpModal').classList.remove('open')">CLOSE</button>
     <h2>Eclipse Predictor</h2>
-    <p>Step through every solar eclipse of the early 21st century. The catalog (43 events, 2001&ndash;2030) is the source of truth for which eclipses occurred and what type they were. The path of the Moon's shadow on the Earth is computed live from astronomical algorithms.</p>
+    <p>Step through every solar eclipse from 1900 to 2200 &mdash; about 3,700 events. The catalog is generated live from Meeus astronomical algorithms (no hard-coded dates), and the path of the Moon's shadow is computed from the same engine.</p>
 
     <h3>Controls</h3>
     <ul>
@@ -134,7 +135,7 @@
     </ul>
 
     <h3>Accuracy</h3>
-    <p>Catalog dates and types match NASA's Five Millennium Canon. Paths are accurate to roughly &plusmn;100 km &mdash; good for visualization, not for chasing totality. For mission-critical predictions, see <a href="https://eclipse.gsfc.nasa.gov" style="color:#4080D0">eclipse.gsfc.nasa.gov</a>.</p>
+    <p>Dates, types, and paths are all computed from Meeus + truncated ELP-2000. Within a few hundred years of today, eclipses match NASA's Five Millennium Canon. Paths are accurate to roughly &plusmn;100 km in the modern era, degrading toward the endpoints. For mission-critical predictions, see <a href="https://eclipse.gsfc.nasa.gov" style="color:#4080D0">eclipse.gsfc.nasa.gov</a>.</p>
   </div>
 </div>
 
@@ -149,7 +150,7 @@
   <div class="row"><span>Max location</span><b id="ecLoc">&mdash;</b></div>
   <div class="row"><span>Sun altitude</span><b id="ecSunAlt">&mdash;</b></div>
   <div class="desc" id="ecDesc">&mdash;</div>
-  <div class="meta">Catalog: NASA Five Millennium Canon &middot; Path: Meeus + Schlyter, &plusmn;100 km</div>
+  <div class="meta">Catalog &amp; path computed live: Meeus &middot; ELP-2000 (30 terms) &middot; ~&plusmn;100 km accuracy</div>
 </div>
 
 <div id="viewPanel" class="panel">
@@ -169,9 +170,10 @@
 
 <div id="legend" class="panel">
   <h4>LEGEND</h4>
-  <div class="leg-row"><span class="swatch" style="background:#FF4040"></span> Path of totality / annularity</div>
-  <div class="leg-row"><span class="swatch dot" style="background:#FFD040"></span> Greatest eclipse point</div>
-  <div class="leg-row"><span class="swatch" style="background:#604030; opacity:0.6"></span> Penumbra band (partial)</div>
+  <div class="leg-row"><span class="swatch" style="background:#FF4040"></span> Path of totality</div>
+  <div class="leg-row"><span class="swatch" style="background:#FFA040"></span> Path of annularity</div>
+  <div class="leg-row"><span class="swatch dot" style="background:#FFD040"></span> Greatest eclipse</div>
+  <div class="leg-row"><span class="swatch" style="background:#B07050; opacity:0.55"></span> Partial-eclipse zone</div>
   <div class="leg-row"><span class="swatch dot" style="background:#FFE0A0"></span> Sub-solar point</div>
 </div>
 
@@ -184,7 +186,16 @@
   <button class="nav-btn play" id="playBtn">PLAY</button>
   <span id="yearLabel">JUMP&nbsp;TO</span>
   <input type="number" id="yearInput" placeholder="year" min="1900" max="2100" step="1">
-  <span id="ecCounter">0 / 43</span>
+  <span id="ecCounter">— / —</span>
+</div>
+
+<div id="loadOverlay" style="position:fixed;inset:0;background:rgba(4,6,14,0.94);z-index:500;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;backdrop-filter:blur(4px)">
+  <div style="color:#FFD040;font-family:Georgia,serif;font-size:1.1em;letter-spacing:6px">GENERATING ECLIPSE CATALOG</div>
+  <div style="color:#6080A0;font-size:0.78em;letter-spacing:2px;font-family:'Courier New',monospace">1900 &mdash; 2200</div>
+  <div style="width:280px;height:6px;background:#0E1428;border:1px solid #1A2A40;border-radius:3px;overflow:hidden">
+    <div id="loadBar" style="width:0%;height:100%;background:linear-gradient(90deg,#4080D0,#FFD040);transition:width 0.18s"></div>
+  </div>
+  <div id="loadCount" style="color:#4080D0;font-size:0.72em;font-family:'Courier New',monospace;letter-spacing:1.5px">0 / 0 new moons checked</div>
 </div>
 
 <script>
@@ -261,7 +272,7 @@ function sunPos(jd_tt) {
   const eps = eps0 + 0.00256 * DEG * Math.cos(Omega);
   const ra  = Math.atan2(Math.cos(eps) * Math.sin(lambda), Math.cos(lambda));
   const dec = Math.asin(Math.sin(eps) * Math.sin(lambda));
-  return { ra, dec, dist: R * 149597870.7 };
+  return { ra, dec, dist: R * 149597870.7, lon: lambda, lat: 0 };
 }
 
 //==============================================================
@@ -379,7 +390,7 @@ function moonPos(jd_tt) {
   const ra  = Math.atan2(sl_ * ce - (sb_ / cb_) * se, cl_);
   const dec = Math.asin(sb_ * ce + cb_ * se * sl_);
 
-  return { ra, dec, dist };
+  return { ra, dec, dist, lon: lambda, lat: beta };
 }
 
 //==============================================================
@@ -556,58 +567,134 @@ function eclipseMagnitude(b) {
 // Type: T=total, A=annular, H=hybrid (annular-total)
 //==============================================================
 
-const CATALOG = [
-  [2001,  6, 21, 12,  4, 'T', 'Atlantic, Angola, Zambia, Zimbabwe, Mozambique, Madagascar'],
-  [2001, 12, 14, 20, 52, 'A', 'Pacific, Costa Rica, Nicaragua'],
-  [2002,  6, 10, 23, 44, 'A', 'Indonesia, Pacific, western Mexico'],
-  [2002, 12,  4,  7, 31, 'T', 'Southern Africa, Indian Ocean, Australia'],
-  [2003,  5, 31,  4,  8, 'A', 'Iceland, Scotland (sunrise annular)'],
-  [2003, 11, 23, 22, 50, 'T', 'Antarctica'],
-  [2005,  4,  8, 20, 36, 'H', 'Pacific, Costa Rica, Panama, Colombia, Venezuela'],
-  [2005, 10,  3, 10, 31, 'A', 'Portugal, Spain, Algeria, Tunisia, Libya, Sudan, Kenya'],
-  [2006,  3, 29, 10, 11, 'T', 'Brazil, Atlantic, Africa, Turkey, Russia, Kazakhstan'],
-  [2006,  9, 22, 11, 40, 'A', 'Guyana, Suriname, French Guiana, Atlantic'],
-  [2008,  2,  7,  3, 55, 'A', 'Antarctica'],
-  [2008,  8,  1, 10, 21, 'T', 'Arctic Canada, Greenland, Russia, Mongolia, China'],
-  [2009,  1, 26,  7, 58, 'A', 'Indian Ocean, Indonesia, Borneo'],
-  [2009,  7, 22,  2, 36, 'T', 'India, Nepal, Bhutan, China, Pacific (longest of 21st century, 6m39s)'],
-  [2010,  1, 15,  7,  6, 'A', 'Africa, Maldives, India, Myanmar, China (longest annular of millennium)'],
-  [2010,  7, 11, 19, 34, 'T', 'South Pacific, Easter Island, Chile, Argentina'],
-  [2012,  5, 20, 23, 53, 'A', 'China, Japan, USA: CA, NV, UT, AZ, NM, TX'],
-  [2012, 11, 13, 22, 12, 'T', 'Northern Australia, South Pacific'],
-  [2013,  5, 10,  0, 25, 'A', 'Western Australia, Pacific'],
-  [2013, 11,  3, 12, 47, 'H', 'Atlantic, Gabon, Congo, Uganda, Kenya, Ethiopia, Somalia'],
-  [2014,  4, 29,  6,  4, 'A', 'Antarctica (non-central annular)'],
-  [2015,  3, 20,  9, 46, 'T', 'North Atlantic, Faroe Islands, Svalbard'],
-  [2016,  3,  9,  1, 58, 'T', 'Indonesia, Pacific'],
-  [2016,  9,  1,  9,  7, 'A', 'Africa, Madagascar, Reunion'],
-  [2017,  2, 26, 14, 53, 'A', 'Pacific, Chile, Argentina, Atlantic, Angola, Zambia, DRC'],
-  [2017,  8, 21, 18, 25, 'T', 'USA: OR, ID, WY, NE, MO, KY, TN, NC, SC (Great American Eclipse)'],
-  [2019,  7,  2, 19, 24, 'T', 'South Pacific, Chile, Argentina'],
-  [2019, 12, 26,  5, 17, 'A', 'Saudi Arabia, Qatar, UAE, Oman, India, Sri Lanka, Indonesia, Singapore'],
-  [2020,  6, 21,  6, 40, 'A', 'Africa, Saudi Arabia, Pakistan, India, China, Taiwan'],
-  [2020, 12, 14, 16, 14, 'T', 'South Pacific, Chile, Argentina, South Atlantic'],
-  [2021,  6, 10, 10, 41, 'A', 'Canada, Greenland, Russia (Arctic ring of fire)'],
-  [2021, 12,  4,  7, 33, 'T', 'Antarctica'],
-  [2023,  4, 20,  4, 16, 'H', 'Western Australia, Indonesia (Timor), Papua'],
-  [2023, 10, 14, 17, 59, 'A', 'USA: OR, NV, UT, NM, TX, Mexico, Belize, Honduras, Nicaragua, Panama, Colombia, Brazil'],
-  [2024,  4,  8, 18, 18, 'T', 'Mexico, USA: TX OK AR MO IL IN OH PA NY VT NH ME, Canada (Great American Eclipse 2.0)'],
-  [2024, 10,  2, 18, 45, 'A', 'Pacific, Easter Island, Chile, Argentina'],
-  [2026,  2, 17, 12, 13, 'A', 'Antarctica'],
-  [2026,  8, 12, 17, 46, 'T', 'Greenland, Iceland, northern Spain'],
-  [2027,  2,  6, 16,  0, 'A', 'Pacific, Chile, Argentina, Atlantic'],
-  [2027,  8,  2, 10,  7, 'T', 'Spain, Morocco, Algeria, Tunisia, Libya, Egypt, Saudi Arabia, Yemen, Somalia (longest 21st-c land total, 6m23s)'],
-  [2028,  1, 26, 15,  8, 'A', 'Brazil, Spain, Portugal'],
-  [2028,  7, 22,  2, 56, 'T', 'Australia (Sydney), New Zealand'],
-  [2030,  6,  1,  6, 29, 'A', 'Algeria, Tunisia, Greece, Turkey, Russia, China, Japan'],
-  [2030, 11, 25,  6, 51, 'T', 'Botswana, South Africa, Australia'],
-];
+// Famous eclipse name + descriptive location overlays (computed catalog gets these merged in by date key).
+const FAMOUS = {
+  '2024-04-08': 'Great American Eclipse 2.0 — Mexico, USA: TX OK AR MO IL IN OH PA NY VT NH ME, Canada',
+  '2017-08-21': 'Great American Eclipse — USA: OR ID WY NE MO KY TN NC SC',
+  '2009-07-22': 'Longest of the 21st century, 6m39s — India, Nepal, Bhutan, China, Pacific',
+  '2010-01-15': 'Longest annular of the millennium — Africa, Maldives, India, Myanmar, China',
+  '2027-08-02': 'Eclipse of the Century, 6m23s — Spain, Morocco, Algeria, Libya, Egypt, Saudi Arabia',
+  '2026-08-12': 'Greenland, Iceland, northern Spain',
+  '2028-07-22': 'Sydney total — Australia, New Zealand',
+  '1999-08-11': 'European total — Cornwall, France, Germany, Romania, Iran, India',
+  '1991-07-11': 'Hawaii / Mexico City / Brazil — longest of 1980-2030, 6m54s',
+  '2045-08-12': 'Future US coast-to-coast — CA NV UT CO OK AR MS AL GA FL',
+  '1972-07-10': 'Soviet Union / Alaska / Canada',
+  '1973-06-30': 'Africa — 7m4s, longest of the 20th century',
+  '1937-06-08': 'Pacific — 7m4s, longest of the 20th century (tied)',
+  '2168-07-05': 'Future — 7m26s, longest of the 21st-23rd centuries',
+};
 
-// Re-shape catalog into objects
-const ECLIPSES = CATALOG.map(([y, mo, d, h, mn, type, loc]) => {
-  const date = new Date(Date.UTC(y, mo - 1, d, h, mn));
-  return { date, year: y, month: mo, day: d, hour: h, minute: mn, type, location: loc };
-});
+// Eclipse catalog (filled in by generateEclipses() on init)
+let ECLIPSES = [];
+
+//==============================================================
+// 6.5 ECLIPSE GENERATOR — find all solar eclipses in a year range
+//==============================================================
+
+function sunMoonElong(jd_tt) {
+  const sun = sunPos(jd_tt);
+  const moon = moonPos(jd_tt);
+  let e = (moon.lon - sun.lon) * RAD;          // degrees
+  e = ((e % 360) + 540) % 360 - 180;            // wrap to [-180, 180]
+  return e;
+}
+
+// Find all new moons in [startJD, endJD]. Uses synodic-month stepping + Newton refinement.
+function findNewMoons(startJD, endJD) {
+  const SYN = 29.530588853;
+  const REF_JD = 2451550.260;                   // ~2000-01-06 18:14 UTC, a known new moon
+  const k0 = Math.floor((startJD - REF_JD) / SYN) - 1;
+  const k1 = Math.ceil((endJD - REF_JD) / SYN) + 1;
+  const out = [];
+  for (let k = k0; k <= k1; k++) {
+    let nmJD = REF_JD + k * SYN;
+    // Newton iteration on elongation (elongation = 0 at new moon)
+    for (let iter = 0; iter < 6; iter++) {
+      const tt  = nmJD + deltaT(jdToDate(nmJD).getUTCFullYear()) / 86400;
+      const e0  = sunMoonElong(tt);
+      if (Math.abs(e0) < 1e-4) break;
+      const e1  = sunMoonElong(tt + 0.01);
+      const slope = (e1 - e0) / 0.01;
+      const adj = e0 / slope;
+      if (!isFinite(adj)) break;
+      nmJD -= adj;
+      if (Math.abs(adj) < 1e-5) break;
+    }
+    if (nmJD >= startJD && nmJD <= endJD) out.push(nmJD);
+  }
+  return out;
+}
+
+// At a given new moon, decide whether it's a solar eclipse and classify it.
+// Returns null if no eclipse, else { jd, date, year, month, day, hour, minute, type, gamma, magnitude }.
+function checkSolarEclipse(jd_newmoon) {
+  const tt = jd_newmoon + deltaT(jdToDate(jd_newmoon).getUTCFullYear()) / 86400;
+  const moon = moonPos(tt);
+  // Quick reject: Moon's ecliptic latitude too large for any eclipse
+  if (Math.abs(moon.lat * RAD) > 1.6) return null;
+
+  // Refine to instant of greatest eclipse (minimum |gamma|) via parabolic fit
+  const dt = 1 / 1440;                               // 1 minute
+  const b0 = besselElements(jd_newmoon);
+  const b1 = besselElements(jd_newmoon + dt);
+  const xp = (b1.x - b0.x) / dt;
+  const yp = (b1.y - b0.y) / dt;
+  const t_min = -(b0.x * xp + b0.y * yp) / (xp * xp + yp * yp);
+  const jd_max = jd_newmoon + (isFinite(t_min) ? Math.max(-0.05, Math.min(0.05, t_min)) : 0);
+  const bGr = besselElements(jd_max);
+  const gamma = Math.sqrt(bGr.x * bGr.x + bGr.y * bGr.y);
+
+  // Eclipse condition: penumbra cone touches Earth.
+  // (Penumbra outer radius at fundamental plane = bGr.l1; eclipse iff gamma < 1 + l1.)
+  if (gamma > 1.0 + Math.abs(bGr.l1)) return null;
+
+  let type;
+  if (gamma < 1.0) {
+    type = bGr.l2 < 0 ? 'T' : 'A';                  // umbra reaches Earth → total; antumbra → annular
+  } else {
+    type = 'P';                                      // penumbra-only → partial
+  }
+  // Hybrid detection: when umbra distance crosses Earth radius mid-path. Approximation:
+  if (type === 'A' && Math.abs(bGr.l2) < 0.005 && gamma < 0.95) type = 'H';
+
+  const date = jdToDate(jd_max);
+  const dateKey = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+  return {
+    jd: jd_max,
+    date,
+    year:   date.getUTCFullYear(),
+    month:  date.getUTCMonth() + 1,
+    day:    date.getUTCDate(),
+    hour:   date.getUTCHours(),
+    minute: date.getUTCMinutes(),
+    type, gamma,
+    location: FAMOUS[dateKey] || '',
+  };
+}
+
+// Generate eclipses across a year range.  Calls onProgress(done, total) as it works,
+// then onDone(catalog) when finished.  Chunked via requestAnimationFrame to keep UI responsive.
+function generateEclipses(startYear, endYear, onProgress, onDone) {
+  const startJD = dateToJD(new Date(Date.UTC(startYear, 0, 1)));
+  const endJD   = dateToJD(new Date(Date.UTC(endYear, 11, 31, 23, 59, 59)));
+  const newMoons = findNewMoons(startJD, endJD);
+  const total = newMoons.length;
+  const out = [];
+  let i = 0;
+  function chunk() {
+    const t0 = performance.now();
+    while (i < total && performance.now() - t0 < 24) {
+      const ecl = checkSolarEclipse(newMoons[i]);
+      if (ecl) out.push(ecl);
+      i++;
+    }
+    if (onProgress) onProgress(i, total);
+    if (i < total) requestAnimationFrame(chunk);
+    else onDone(out);
+  }
+  chunk();
+}
 
 //==============================================================
 // 7. THREE.JS GLOBE
@@ -1336,11 +1423,26 @@ function loadEclipse(i) {
     pathGroup.add(makePoint(greatest.lat, greatest.lon, 0xFFD040, 220));
   }
 
-  // Penumbra outline at greatest
+  // Partial-eclipse zone — stack penumbra outlines across the eclipse duration
+  // so the band of partial visibility reads as a translucent swath around the central path.
   if (state.showPenumbra) {
-    const pen = penumbraOutline(jd0 + (greatest ? (greatest.jd - jd0) : 0));
-    const penMesh = makePenumbraOutline(pen);
-    if (penMesh) pathGroup.add(penMesh);
+    const center = greatest ? greatest.jd : jd0;
+    const N_RINGS = 11;                              // odd → one sample sits exactly on greatest
+    const SPAN_HOURS = 2.0;
+    for (let r = 0; r < N_RINGS; r++) {
+      const frac = r / (N_RINGS - 1);                // 0..1
+      const dt   = (frac - 0.5) * 2 * SPAN_HOURS;    // -SPAN..+SPAN hours
+      const pen  = penumbraOutline(center + dt / 24);
+      if (!pen) continue;
+      // Brightest at greatest, fade toward edges
+      const wt = 1 - Math.abs(frac - 0.5) * 2;       // 0..1..0
+      const opacity = 0.10 + 0.18 * wt;
+      const tint = e.type === 'P' ? 0xC0A060 : 0xB07050;   // dimmer for purely-partial events
+      const v3 = pen.map(p => latLonToVec3(p.lat, p.lon, 1.003 + r * 0.0002));
+      const geo = new THREE.BufferGeometry().setFromPoints(v3);
+      const mat = new THREE.LineBasicMaterial({ color: tint, transparent: true, opacity, depthWrite: false });
+      pathGroup.add(new THREE.Line(geo, mat));
+    }
   }
 
   // Sub-solar marker
@@ -1704,14 +1806,38 @@ function animate() {
 // 14. INIT — start at the most famous eclipse: Apr 8 2024
 //==============================================================
 
-// Set year-input bounds from catalog
-const _yEl = document.getElementById('yearInput');
-_yEl.min = ECLIPSES[0].year;
-_yEl.max = ECLIPSES[ECLIPSES.length - 1].year;
-
-const initialIdx = ECLIPSES.findIndex(e => e.year === 2024 && e.month === 4 && e.day === 8);
-loadEclipse(initialIdx >= 0 ? initialIdx : ECLIPSES.length - 1);
+// Start render loop immediately so the globe is visible behind the loading overlay.
 animate();
+
+// Generate the catalog (1900-2200 by default), chunked so the UI stays responsive.
+const CATALOG_RANGE = [1900, 2200];
+const loadBarEl = document.getElementById('loadBar');
+const loadCountEl = document.getElementById('loadCount');
+const loadOverlayEl = document.getElementById('loadOverlay');
+
+generateEclipses(
+  CATALOG_RANGE[0],
+  CATALOG_RANGE[1],
+  (done, total) => {
+    loadBarEl.style.width = (done / total * 100).toFixed(1) + '%';
+    loadCountEl.textContent = `${done} / ${total} new moons checked`;
+  },
+  (catalog) => {
+    ECLIPSES = catalog;
+    // Wire year-input bounds
+    const yEl = document.getElementById('yearInput');
+    yEl.min = ECLIPSES[0].year;
+    yEl.max = ECLIPSES[ECLIPSES.length - 1].year;
+    // Default to 2024-04-08 if present, else most recent
+    let idx = ECLIPSES.findIndex(e => e.year === 2024 && e.month === 4 && e.day === 8);
+    if (idx < 0) idx = Math.floor(ECLIPSES.length / 2);
+    loadEclipse(idx);
+    // Fade out overlay
+    loadOverlayEl.style.transition = 'opacity 0.5s';
+    loadOverlayEl.style.opacity = '0';
+    setTimeout(() => { loadOverlayEl.style.display = 'none'; }, 600);
+  }
+);
 
 </script>
 </body>

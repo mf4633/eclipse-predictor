@@ -392,6 +392,17 @@ const MOON_LR = [
   [0,  1, -2,  0,    -2689,     -7003],
   [2,  0, -1,  2,    -2602,         0],
   [2, -1, -2,  0,     2390,     10056],
+  // ---- additional Meeus 47.A terms (next-largest amplitudes) ----
+  [1,  1, -1,  0,    -2348,      4610],
+  [2, -2,  0,  0,     2236,     -6783],
+  [0,  1,  2,  0,    -2120,      5906],
+  [0,  2,  0,  0,    -2069,         0],
+  [2, -2, -1,  0,     2048,     -3025],
+  [2,  0,  1, -2,    -1773,      3873],
+  [2,  0,  0,  2,    -1595,         0],
+  [4, -1, -1,  0,     1215,     -1410],
+  [0,  0,  2,  2,    -1110,         0],
+  [3,  0, -1,  0,     -892,      1929],
 ];
 
 // Periodic terms for Moon latitude (Σb)
@@ -457,12 +468,17 @@ function moonPos(jd_tt) {
     sumB += sb * eFac * Math.sin(arg);
   }
 
-  const lambda = Lp + sumL * 1e-6 * DEG;       // ecliptic longitude (rad)
-  const beta   = sumB * 1e-6 * DEG;             // ecliptic latitude (rad)
-  const dist   = 385000.56 + sumR / 1000;       // km
+  // Nutation in longitude (apparent vs mean). Principal term: -17.2'' sin Ω.
+  const Omega = (125.04 - 1934.136 * T) * DEG;
+  const dPsi  = -0.004778 * Math.sin(Omega) * DEG;   // radians
 
-  // Convert ecliptic to equatorial
-  const eps = (23.4392911 - (46.8150 * T + 0.00059 * T * T - 0.001813 * T * T * T) / 3600) * DEG;
+  const lambda = Lp + sumL * 1e-6 * DEG + dPsi;      // apparent ecliptic longitude (rad)
+  const beta   = sumB * 1e-6 * DEG;                  // ecliptic latitude (rad)
+  const dist   = 385000.56 + sumR / 1000;            // km
+
+  // Convert ecliptic to equatorial (with nutation in obliquity included)
+  const dEps   = 0.002558 * Math.cos(Omega) * DEG;    // +9.2'' cos Ω
+  const eps = (23.4392911 - (46.8150 * T + 0.00059 * T * T - 0.001813 * T * T * T) / 3600) * DEG + dEps;
   const sl_ = Math.sin(lambda), cl_ = Math.cos(lambda);
   const sb_ = Math.sin(beta),   cb_ = Math.cos(beta);
   const se = Math.sin(eps),     ce = Math.cos(eps);
@@ -1920,20 +1936,34 @@ yearInput.addEventListener('keydown', e => {
 
 function jumpToYear(targetYear) {
   if (!ECLIPSES.length) return;
-  // Find catalog index whose year is closest (prefer first eclipse of that year)
-  let bestIdx = 0;
-  let bestDiff = Infinity;
+  // All eclipses matching the target year
+  const matches = [];
+  for (let i = 0; i < ECLIPSES.length; i++) {
+    if (ECLIPSES[i].year === targetYear) matches.push({ e: ECLIPSES[i], i });
+  }
+  if (matches.length) {
+    // Rank by type (T > A > H > P) then by smallest gamma (most central)
+    const PRIO = { T: 0, A: 1, H: 2, P: 3 };
+    matches.sort((a, b) => {
+      const dp = PRIO[a.e.type] - PRIO[b.e.type];
+      return dp !== 0 ? dp : a.e.gamma - b.e.gamma;
+    });
+    // If we're already on a match, advance to the next-ranked one (cycle within year)
+    const cur = matches.findIndex(m => m.i === state.idx);
+    const pick = (cur >= 0 ? matches[(cur + 1) % matches.length] : matches[0]);
+    userRotated = false;
+    loadEclipse(pick.i);
+    return;
+  }
+  // Nothing in target year — snap to closest event and flash red
+  let bestIdx = 0, bestDiff = Infinity;
   for (let i = 0; i < ECLIPSES.length; i++) {
     const diff = Math.abs(ECLIPSES[i].year - targetYear);
     if (diff < bestDiff) { bestDiff = diff; bestIdx = i; }
   }
-  // If target year is outside catalog range, snap to nearest endpoint and warn
-  const minY = ECLIPSES[0].year, maxY = ECLIPSES[ECLIPSES.length - 1].year;
-  if (targetYear < minY || targetYear > maxY) {
-    yearInput.style.borderColor = '#FF6040';
-    yearInput.title = `Catalog covers ${minY}–${maxY}; jumped to nearest event.`;
-    setTimeout(() => { yearInput.style.borderColor = ''; }, 1800);
-  }
+  yearInput.style.borderColor = '#FF6040';
+  yearInput.title = `No eclipse in ${targetYear}; jumped to nearest.`;
+  setTimeout(() => { yearInput.style.borderColor = ''; }, 1800);
   userRotated = false;
   loadEclipse(bestIdx);
 }

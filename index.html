@@ -76,6 +76,22 @@
   #helpModal .close { float: right; background: none; border: 1px solid #1A2A40; color: #6080A0; padding: 3px 10px; border-radius: 3px; cursor: pointer; font-family: inherit; }
   #helpModal .close:hover { color: #FFD040; border-color: #FFD040; }
 
+  #mathModal { display: none; position: fixed; inset: 0; background: rgba(4,6,14,0.88); z-index: 1000; align-items: flex-start; justify-content: center; backdrop-filter: blur(6px); padding: 40px 20px; overflow-y: auto; }
+  #mathModal.open { display: flex; }
+  #mathModal .card { background: #0A0A1A; border: 1px solid #1A2A40; border-radius: 8px; padding: 24px 30px; max-width: 760px; width: 100%; color: #B0C8E0; font-size: 0.85em; line-height: 1.55; }
+  #mathModal h2 { color: #FFD040; font-family: Georgia, serif; font-size: 1.3em; margin-bottom: 4px; letter-spacing: 1px; }
+  #mathModal .subtitle { color: #6080A0; font-size: 0.78em; margin-bottom: 18px; font-style: italic; }
+  #mathModal .section { margin: 18px 0; padding: 14px 16px; background: #0E1428; border: 1px solid #1A2A40; border-radius: 5px; }
+  #mathModal .sec-title { color: #4080D0; font-family: Georgia, serif; font-size: 0.95em; letter-spacing: 1.5px; margin-bottom: 8px; }
+  #mathModal .sec-formula { font-size: 1.0em; color: #D0D8E8; padding: 6px 0; overflow-x: auto; }
+  #mathModal .sec-vals { color: #80B0E0; font-family: 'Courier New', monospace; font-size: 0.86em; padding: 8px 12px; background: #04060E; border-left: 3px solid #4080D0; margin-top: 8px; border-radius: 0 3px 3px 0; }
+  #mathModal .sec-vals .lbl { color: #6080A0; }
+  #mathModal .sec-vals .val { color: #FFD040; }
+  #mathModal .close { float: right; background: none; border: 1px solid #1A2A40; color: #6080A0; padding: 3px 10px; border-radius: 3px; cursor: pointer; font-family: inherit; }
+  #mathModal .close:hover { color: #FFD040; border-color: #FFD040; }
+  #mathModal .katex { color: #E0E8F0; }
+  #mathModal .katex-display { margin: 0.4em 0; }
+
   #landmarkTip { display: none; position: fixed; pointer-events: none; background: rgba(10,10,26,0.94); border: 1px solid #FFD040; color: #FFD040; padding: 5px 11px; font-family: Georgia, serif; font-size: 0.78em; letter-spacing: 1.5px; border-radius: 3px; z-index: 200; box-shadow: 0 2px 8px rgba(0,0,0,0.6); }
 
   #yearInput { width: 70px; padding: 4px 6px; background: #0E1428; border: 1px solid #1A2A40; color: #FFD040; font-family: Georgia, serif; font-size: 0.84em; text-align: center; border-radius: 3px; outline: none; letter-spacing: 1px; }
@@ -91,6 +107,9 @@
     #titleOverlay { display: none; }
   }
 </style>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
@@ -164,9 +183,69 @@
   <button class="view-btn active" id="togNight">NIGHT SHADING</button>
   <button class="view-btn active" id="togPenumbra">PENUMBRA BAND</button>
   <button class="view-btn active" id="togLandmarks">LANDMARKS</button>
+  <h4 style="margin-top:10px">DETAIL</h4>
+  <button class="view-btn" id="openMath">SHOW THE MATH</button>
 </div>
 
 <div id="landmarkTip"></div>
+
+<div id="mathModal">
+  <div class="card">
+    <button class="close" onclick="document.getElementById('mathModal').classList.remove('open')">CLOSE</button>
+    <h2 id="mathTitle">The Math</h2>
+    <div class="subtitle" id="mathSubtitle">&mdash;</div>
+
+    <div class="section">
+      <div class="sec-title">1 &middot; TIME</div>
+      <div class="sec-formula">$$ JD_{\text{TT}} = JD_{\text{UT}} + \frac{\Delta T}{86400}, \qquad \theta_0 = 280.46061837 + 360.98564736629\,(JD - J2000) + \dots $$</div>
+      <div class="sec-vals" id="mathTime">&mdash;</div>
+    </div>
+
+    <div class="section">
+      <div class="sec-title">2 &middot; SUN POSITION (Meeus ch. 25)</div>
+      <div class="sec-formula">$$ L_0 = 280.46646 + 36000.76983\,T,\quad M = 357.52911 + 35999.05029\,T $$
+        $$ C = (1.9146 - 0.0048\,T)\sin M + 0.020\sin 2M + \dots,\quad \lambda_\odot = L_0 + C $$
+        $$ R = \tfrac{1.0001\,(1-e^2)}{1 + e\cos(M+C)}\;\text{AU} $$</div>
+      <div class="sec-vals" id="mathSun">&mdash;</div>
+    </div>
+
+    <div class="section">
+      <div class="sec-title">3 &middot; MOON POSITION (Meeus ch. 47, ELP-2000)</div>
+      <div class="sec-formula">$$ \lambda_\text{☾} = L' + 10^{-6}\!\!\sum_i a_i \sin(d_i D + m_i M + m'_i M' + f_i F) $$
+        $$ \beta_\text{☾} = 10^{-6}\!\!\sum_i b_i \sin(\dots),\qquad r_\text{☾} = 385000.56 + \tfrac{1}{1000}\sum_i c_i \cos(\dots) $$</div>
+      <div class="sec-vals" id="mathMoon">&mdash;</div>
+    </div>
+
+    <div class="section">
+      <div class="sec-title">4 &middot; BESSELIAN ELEMENTS</div>
+      <div class="sec-formula">$$ \vec{G} = \vec{r}_\text{☾} - \vec{r}_\odot,\quad \hat{a} = \tfrac{\vec G}{|\vec G|}\;\Rightarrow\; (\alpha, d) $$
+        $$ x = \tfrac{-M_x \sin\alpha + M_y\cos\alpha}{R_\oplus},\quad y = \tfrac{-M_x\sin d\cos\alpha - M_y\sin d\sin\alpha + M_z\cos d}{R_\oplus} $$
+        $$ \mu = \theta_0 - \alpha,\quad \tan f_1 = \tfrac{R_\odot + k R_\oplus}{|\vec G|},\quad \tan f_2 = \tfrac{R_\odot - k R_\oplus}{|\vec G|} $$
+        $$ \ell_1 = z\tan f_1 + \tfrac{k}{\cos f_1},\quad \ell_2 = z\tan f_2 - \tfrac{k}{\cos f_2} $$</div>
+      <div class="sec-vals" id="mathBessel">&mdash;</div>
+    </div>
+
+    <div class="section">
+      <div class="sec-title">5 &middot; MAGNITUDE & GAMMA</div>
+      <div class="sec-formula">$$ \gamma = \sqrt{x^2 + y^2},\qquad \text{mag} = \frac{\theta_\text{☾}}{\theta_\odot} = \frac{k R_\oplus / r_\text{☾}}{R_\odot / r_\odot} $$</div>
+      <div class="sec-vals" id="mathMag">&mdash;</div>
+    </div>
+
+    <div class="section">
+      <div class="sec-title">6 &middot; CLASSIFICATION</div>
+      <div class="sec-formula">$$ \text{type} = \begin{cases} \mathrm{T} & \gamma < 1 \text{ and } \ell_2 < 0 \;(\text{umbra reaches Earth}) \\ \mathrm{A} & \gamma < 1 \text{ and } \ell_2 > 0 \;(\text{antumbra}) \\ \mathrm{P} & \gamma \ge 1 \;(\text{penumbra only}) \end{cases} $$</div>
+      <div class="sec-vals" id="mathClass">&mdash;</div>
+    </div>
+
+    <div class="section">
+      <div class="sec-title">7 &middot; CENTRAL PATH ON EARTH</div>
+      <div class="sec-formula">$$ z = \sqrt{1 - x^2 - y^2}\;\text{(spherical Earth, fundamental plane to surface)} $$
+        $$ \begin{aligned} X &= -x\sin(-\mu) - y\sin d\cos(-\mu) + z\cos d\cos(-\mu) \\ Y &=  x\cos(-\mu) - y\sin d\sin(-\mu) + z\cos d\sin(-\mu) \\ Z &=  y\cos d + z\sin d \end{aligned}$$
+        $$ \varphi = \arcsin Z,\qquad \lambda = \operatorname{atan2}(Y, X) $$</div>
+      <div class="sec-vals" id="mathPath">&mdash;</div>
+    </div>
+  </div>
+</div>
 
 <div id="legend" class="panel">
   <h4>LEGEND</h4>
@@ -1735,6 +1814,97 @@ toggleBtn('togLandmarks', 'showLandmarks', v => {
   if (!v) tooltipEl.style.display = 'none';
 });
 
+document.getElementById('openMath').onclick = () => {
+  document.getElementById('mathModal').classList.add('open');
+  populateMath();
+};
+
+function populateMath() {
+  if (state.idx < 0 || state.idx >= ECLIPSES.length) return;
+  const e = ECLIPSES[state.idx];
+  const jd0 = dateToJD(e.date);
+  const dT = deltaT(e.year);
+  const jdTT = jd0 + dT / 86400;
+  const sun = sunPos(jdTT);
+  const moon = moonPos(jdTT);
+  const b = besselElements(jd0);
+  const gamma = Math.sqrt(b.x * b.x + b.y * b.y);
+  const mag = computeMagnitude(jd0);
+  const sub = subSolarPoint(jd0);
+  const path = computeCentralPath(jd0, 3.0, 60);
+  const greatest = path.greatestIdx >= 0 ? path.points[path.greatestIdx] : null;
+
+  const rows = (pairs) => pairs.map(([k, v]) => `<div><span class="lbl">${k}:</span> <span class="val">${v}</span></div>`).join('');
+
+  document.getElementById('mathTitle').textContent = `The Math — ${formatEclipseName(e)}`;
+  document.getElementById('mathSubtitle').textContent = 'Live values for this eclipse, plugged into the Meeus + Besselian pipeline.';
+
+  document.getElementById('mathTime').innerHTML = rows([
+    ['JD (UT)',   jd0.toFixed(5) + ' days'],
+    ['ΔT',        dT.toFixed(1) + ' s'],
+    ['JD (TT)',   jdTT.toFixed(5)],
+    ['θ₀ (GST)',  gst(jd0).toFixed(3) + '°'],
+  ]);
+
+  document.getElementById('mathSun').innerHTML = rows([
+    ['λ_☉ (ecliptic lon)',  (sun.lon * RAD).toFixed(4) + '°'],
+    ['α_☉ (RA)',            (sun.ra * RAD).toFixed(4) + '°'],
+    ['δ_☉ (Dec)',           (sun.dec * RAD).toFixed(4) + '°'],
+    ['r_☉ (distance)',       (sun.dist / 1e6).toFixed(3) + ' × 10⁶ km  (' + (sun.dist / 1.496e8).toFixed(4) + ' AU)'],
+  ]);
+
+  document.getElementById('mathMoon').innerHTML = rows([
+    ['λ_☾ (ecliptic lon)',  (moon.lon * RAD).toFixed(4) + '°'],
+    ['β_☾ (ecliptic lat)',   (moon.lat * RAD).toFixed(4) + '°'],
+    ['α_☾ (RA)',            (moon.ra * RAD).toFixed(4) + '°'],
+    ['δ_☾ (Dec)',           (moon.dec * RAD).toFixed(4) + '°'],
+    ['r_☾ (distance)',       moon.dist.toFixed(0) + ' km'],
+  ]);
+
+  document.getElementById('mathBessel').innerHTML = rows([
+    ['x',     b.x.toFixed(5) + ' R⊕'],
+    ['y',     b.y.toFixed(5) + ' R⊕'],
+    ['d',     b.d.toFixed(4) + '°'],
+    ['μ',     b.mu.toFixed(4) + '°'],
+    ['ℓ₁ (penumbra radius)', b.l1.toFixed(5) + ' R⊕'],
+    ['ℓ₂ (umbra radius)',     b.l2.toFixed(5) + ' R⊕  ' + (b.l2 < 0 ? '(negative → umbra reaches Earth)' : '(positive → antumbra)')],
+    ['tan f₁',  b.tanF1.toExponential(4)],
+    ['tan f₂',  b.tanF2.toExponential(4)],
+  ]);
+
+  document.getElementById('mathMag').innerHTML = rows([
+    ['γ = √(x² + y²)',       gamma.toFixed(5)],
+    ['θ_☾ / θ_☉ (magnitude)', mag.toFixed(4)],
+  ]);
+
+  let classExplain = '';
+  if (gamma < 1 && b.l2 < 0) classExplain = 'γ < 1 and ℓ₂ < 0 ⇒ TOTAL';
+  else if (gamma < 1 && b.l2 >= 0) classExplain = 'γ < 1 and ℓ₂ > 0 ⇒ ANNULAR';
+  else classExplain = 'γ ≥ 1 ⇒ PARTIAL (penumbra only)';
+  document.getElementById('mathClass').innerHTML = rows([
+    ['Computed type', e.type + ` — ${({T:'TOTAL',A:'ANNULAR',H:'HYBRID',P:'PARTIAL'})[e.type]}`],
+    ['Reason',         classExplain],
+  ]);
+
+  document.getElementById('mathPath').innerHTML = rows([
+    ['Sub-solar point',                `${sub.lat.toFixed(2)}°, ${sub.lon.toFixed(2)}°`],
+    ['Greatest eclipse point',         greatest ? `${greatest.lat.toFixed(3)}°, ${greatest.lon.toFixed(3)}°` : '(no central path)'],
+    ['Path samples',                    path.points.length + ' points across ±3 h'],
+    ['z² check at greatest', greatest ? `1 − x² − y² = ${(1 - b.x*b.x - b.y*b.y).toFixed(5)} ${(1 - b.x*b.x - b.y*b.y) > 0 ? '> 0 ✓' : '≤ 0 ✗'}` : '—'],
+  ]);
+
+  // Render KaTeX
+  if (window.renderMathInElement) {
+    renderMathInElement(document.getElementById('mathModal').querySelector('.card'), {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$',  right: '$',  display: false },
+      ],
+      throwOnError: false,
+    });
+  }
+}
+
 // Year jump — find the cataloged eclipse closest to the typed year
 const yearInput = document.getElementById('yearInput');
 yearInput.addEventListener('change', () => {
@@ -1778,6 +1948,7 @@ document.addEventListener('keydown', e => {
     e.preventDefault(); document.getElementById('playBtn').click();
   } else if (e.key === 'Escape') {
     document.getElementById('helpModal').classList.remove('open');
+    document.getElementById('mathModal').classList.remove('open');
   }
 });
 

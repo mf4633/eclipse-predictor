@@ -29,9 +29,7 @@ Single-file 3D solar eclipse visualizer. Step through every solar eclipse from *
 
 ## Accuracy
 
-Catalog dates and types match NASA's [Five Millennium Canon of Solar Eclipses](https://eclipse.gsfc.nasa.gov) across the full 1900–2200 range (validated on ~3,700 events at load via astronomy-engine's SearchGlobalSolarEclipse). Paths computed from vendored astronomy-engine (Moshier ephemeris, sub-arcsecond) + Besselian elements yield **sub-km** ground accuracy for visualization — effectively NASA-precision for a browser tool. Not for mission-critical totality chasing; cross-check at <https://eclipse.gsfc.nasa.gov>.
-
-"Show the Math" panel (live values for JD, Sun/Moon vectors, Besselian x/y/d/μ/l1/l2, gamma, magnitude, classification, path samples) makes the full pipeline self-contained and auditable.
+Catalog dates and types match NASA's [Five Millennium Canon of Solar Eclipses](https://eclipse.gsfc.nasa.gov). Computed paths are accurate to roughly **±100 km** — fine for visualization, **not** for chasing totality. For mission-critical predictions go to <https://eclipse.gsfc.nasa.gov>.
 
 ## Stack
 
@@ -42,11 +40,3 @@ Catalog dates and types match NASA's [Five Millennium Canon of Solar Eclipses](h
 ## License
 
 MIT — see [LICENSE](LICENSE).
-
-## Portfolio & Open-Core Notes (Phase 3)
-
-This lives in the Board Gaming Hub catalog (https://boardgaminghub.com/EclipsePredictor.html). Core free + pro tools story: fully client-side, never-gate the fundamentals (MIT, single-file, no build). 
-
-For hydro/engineering parity examples in the same portfolio see Floodline/Bonneville etc (0.2 engine consumption mirrors, auditable open core). 
-
-CTAs: dispatch package (github.com/mf4633 repos), contribute via engine-feedback, "never gate" principles. Cross links promote knowledge (open computation), openness (source + feedback), and portfolio flywheel.

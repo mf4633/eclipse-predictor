@@ -541,14 +541,14 @@ function eclipseMagnitude(b) {
 // Type: T=total, A=annular, H=hybrid (annular-total)
 //==============================================================
 
-// Famous eclipse name + descriptive location overlays (computed catalog gets these merged in by date key).
+// Famous eclipse name + descriptive location overlays (computed catalog gets these merged in by closest date).
 const FAMOUS = {
   '2024-04-08': 'Great American Eclipse 2.0 — Mexico, USA: TX OK AR MO IL IN OH PA NY VT NH ME, Canada',
   '2017-08-21': 'Great American Eclipse — USA: OR ID WY NE MO KY TN NC SC',
   '2009-07-22': 'Longest of the 21st century, 6m39s — India, Nepal, Bhutan, China, Pacific',
   '2010-01-15': 'Longest annular of the millennium — Africa, Maldives, India, Myanmar, China',
-  '2027-08-02': 'Eclipse of the Century, 6m23s — Spain, Morocco, Algeria, Libya, Egypt, Saudi Arabia',
-  '2026-08-12': 'Greenland, Iceland, northern Spain',
+  '2027-08-02': 'Eclipse of the Century, 6m23s total — Spain, Morocco, Algeria, Libya, Egypt, Saudi Arabia',
+  '2026-08-12': 'Total solar eclipse visible in northern Spain, Greenland, Iceland, Arctic',
   '2028-07-22': 'Sydney total — Australia, New Zealand',
   '1999-08-11': 'European total — Cornwall, France, Germany, Romania, Iran, India',
   '1991-07-11': 'Hawaii / Mexico City / Brazil — longest of 1980-2030, 6m54s',
@@ -603,7 +603,7 @@ function generateEclipses(startYear, endYear, onProgress, onDone) {
         gamma:  cur.distance / R_EARTH,        // astronomy-engine returns km; we want Earth radii
         peakLat: cur.latitude,                 // greatest-eclipse coordinates from astronomy-engine
         peakLon: cur.longitude,
-        location: FAMOUS[dateKey] || '',
+        location: '',
       });
       try {
         cur = Astronomy.NextGlobalSolarEclipse(cur.peak);
@@ -1860,6 +1860,27 @@ generateEclipses(
   },
   (catalog) => {
     ECLIPSES = catalog;
+
+    // Robust FAMOUS merge by closest date (in case computed peak dateKey differs by 1 day from library)
+    // This ensures 2026-08-12 (Spain) and 2027-08-02 (Spain) descriptions are applied correctly.
+    Object.keys(FAMOUS).forEach(key => {
+      const [y, m, d] = key.split('-').map(Number);
+      const targetDate = new Date(Date.UTC(y, m-1, d));
+      const targetJD = dateToJD(targetDate);
+      let best = null;
+      let bestDiff = Infinity;
+      for (let e of ECLIPSES) {
+        const diff = Math.abs(e.jd - targetJD);
+        if (diff < bestDiff) {
+          bestDiff = diff;
+          best = e;
+        }
+      }
+      if (best && bestDiff < 2) {  // within ~2 days tolerance
+        best.location = FAMOUS[key];
+      }
+    });
+
     // Wire year-input bounds
     const yEl = document.getElementById('yearInput');
     yEl.min = ECLIPSES[0].year;

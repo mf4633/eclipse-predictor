@@ -589,7 +589,6 @@ function generateEclipses(startYear, endYear, onProgress, onDone) {
     const t0 = performance.now();
     while (cur && cur.peak.date <= endDate && performance.now() - t0 < 24) {
       const date = cur.peak.date;
-      const dateKey = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
       const TYPE_MAP = { total: 'T', annular: 'A', hybrid: 'H', partial: 'P' };
       out.push({
         jd: dateToJD(date),
@@ -605,6 +604,7 @@ function generateEclipses(startYear, endYear, onProgress, onDone) {
         peakLon: cur.longitude,
         location: '',
       });
+      // Note: dateKey computation removed; FAMOUS descriptions now applied robustly post-generation by closest JD match.
       try {
         cur = Astronomy.NextGlobalSolarEclipse(cur.peak);
       } catch (err) {

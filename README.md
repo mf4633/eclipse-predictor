@@ -1,6 +1,6 @@
 # Eclipse Predictor
 
-Single-file 3D solar eclipse visualizer. Step through every solar eclipse from **1900 to 2200** — about 3,700 events generated live using astronomy-engine (Don Cross's MIT-licensed port of Steve Moshier's ephemeris, sub-arcsecond accuracy) — and watch the path of totality sweep across a Three.js Earth.
+Single-file 3D solar eclipse visualizer. Step through every solar eclipse from **1900 to 2200** — about 690 events generated live using astronomy-engine (Don Cross's MIT-licensed port of Steve Moshier's ephemeris, sub-arcsecond accuracy) — and watch the path of totality sweep across a Three.js Earth.
 
 **Live demo**: open `index.html` in any modern browser, or visit the deployed copy at <https://boardgaminghub.com/EclipsePredictor.html>.
 
@@ -8,7 +8,7 @@ Single-file 3D solar eclipse visualizer. Step through every solar eclipse from *
 
 ## What it does
 
-- **Computed catalog** — every solar eclipse 1900–2200 (~3,700 events) generated at page load using astronomy-engine's SearchGlobalSolarEclipse / NextGlobalSolarEclipse (matches NASA's Five Millennium Canon)
+- **Computed catalog** — every solar eclipse 1900–2200 (~690 events) generated at page load using astronomy-engine's SearchGlobalSolarEclipse / NextGlobalSolarEclipse (matches NASA's Five Millennium Canon)
 - **Live path computation** — Besselian elements from astronomy-engine positions, central path (and penumbra) traced where the Moon's shadow axis intersects Earth's surface, sampled at high frequency
 - **Shaded partial-eclipse zone** — 11 stacked translucent penumbra rings sampled across ±2 hours show the swath of partial visibility around the central path
 - **3D landmarks** — 17 cartoon monuments (Eiffel, Pyramids, Sphinx, Opera House, Liberty, Big Ben, Taj, Fuji, Christ Redeemer, Stonehenge, Moai, Colosseum, Burj, Petra, Chichen Itza, Angkor Wat, Kilimanjaro) at correct lat/lon with hover tooltips

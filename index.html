@@ -252,11 +252,12 @@
   <button class="view-btn active" id="togLandmarks" aria-pressed="true">LANDMARKS</button>
   <h4 style="margin-top:10px">YOUR LOCATION</h4>
   <div style="display:flex;gap:4px;margin:4px 0">
-    <input type="number" id="locLat" placeholder="lat" step="0.0001" style="width:54px;padding:4px;background:#0E1428;border:1px solid #1A2A40;color:#B0C8E0;font-size:0.7em;border-radius:3px">
-    <input type="number" id="locLon" placeholder="lon" step="0.0001" style="width:54px;padding:4px;background:#0E1428;border:1px solid #1A2A40;color:#B0C8E0;font-size:0.7em;border-radius:3px">
+    <input type="number" id="locLat" placeholder="lat" step="0.0001" aria-label="Your latitude" style="width:54px;padding:4px;background:#0E1428;border:1px solid #1A2A40;color:#B0C8E0;font-size:0.7em;border-radius:3px">
+    <input type="number" id="locLon" placeholder="lon" step="0.0001" aria-label="Your longitude" style="width:54px;padding:4px;background:#0E1428;border:1px solid #1A2A40;color:#B0C8E0;font-size:0.7em;border-radius:3px">
     <button class="view-btn" id="locCheck" style="flex:1;text-align:center;padding:4px">CHECK</button>
   </div>
-  <div id="locResult" style="font-size:0.68em;color:#8098B0;line-height:1.45;margin-top:2px;min-height:2.8em"></div>
+  <button class="view-btn" id="locGeo" style="text-align:center;padding:4px;margin:0 0 2px">USE MY LOCATION</button>
+  <div id="locResult" aria-live="polite" style="font-size:0.68em;color:#8098B0;line-height:1.45;margin-top:2px;min-height:2.8em"></div>
   <h4 style="margin-top:10px">DETAIL</h4>
   <button class="view-btn" id="openMath">SHOW THE MATH</button>
   <button class="view-btn" id="shareBtn">COPY SHARE LINK</button>
@@ -1658,9 +1659,10 @@ function animateCameraTo(lat, lon, dist) {
   camTarget.dist = dist;
 }
 
+const reduceMotionMQ = window.matchMedia('(prefers-reduced-motion: reduce)');
 function updateCamera() {
-  // Interpolate
-  const k = 0.08;
+  // Interpolate — but snap instantly when the user prefers reduced motion.
+  const k = reduceMotionMQ.matches ? 1 : 0.08;
   camCurrent.lat += (camTarget.lat - camCurrent.lat) * k;
   // Wrap-aware longitude lerp
   let dl = camTarget.lon - camCurrent.lon;
@@ -1834,6 +1836,20 @@ document.getElementById('locCheck').onclick = () => {
     if (e.key === 'Enter' && state.idx >= 0) updateLocationResult(dateToJD(ECLIPSES[state.idx].date));
   });
 });
+document.getElementById('locGeo').onclick = () => {
+  const res = document.getElementById('locResult');
+  if (!navigator.geolocation) { res.textContent = 'Geolocation is not available in this browser.'; return; }
+  res.textContent = 'Locating…';
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      document.getElementById('locLat').value = pos.coords.latitude.toFixed(4);
+      document.getElementById('locLon').value = pos.coords.longitude.toFixed(4);
+      if (state.idx >= 0) updateLocationResult(dateToJD(ECLIPSES[state.idx].date));
+    },
+    err => { res.textContent = 'Location unavailable (' + err.message + '). Enter coordinates manually.'; },
+    { enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 }
+  );
+};
 // Default: Hornedo, Cantabria — Aug 2026 eclipse base
 document.getElementById('locLat').value = '43.3872';
 document.getElementById('locLon').value = '-3.7478';

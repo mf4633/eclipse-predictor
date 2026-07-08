@@ -200,7 +200,7 @@
       <li><b>JUMP TO</b> &mdash; type a year to jump to the nearest cataloged eclipse</li>
       <li><b>PLAY</b> &mdash; auto-advance every 2 seconds</li>
       <li><b>Drag</b> the globe to rotate; <b>scroll</b> or pinch to zoom</li>
-      <li><b>Hover</b> a 3D landmark to see its name</li>
+      <li><b>Hover</b> (or <b>tap</b> on touch) a 3D landmark to see its name</li>
       <li><b>Copy share link</b> &mdash; the URL tracks the current eclipse, so any view is bookmarkable</li>
     </ul>
 
@@ -911,13 +911,27 @@ function buildCoastlines(polys) {
 }
 
 fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/land-110m.json')
-  .then(r => r.json())
+  .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
   .then(topo => {
     const polys = decodeTopoJson(topo);
     buildCoastlines(polys);
   })
   .catch(err => {
     console.warn('Coastline load failed:', err);
+    // The world-atlas CDN is unreachable — reflect that in the toggle so the
+    // control doesn't silently do nothing.
+    const btn = document.getElementById('togCoasts');
+    if (btn) {
+      btn.classList.remove('active');
+      btn.setAttribute('aria-pressed', 'false');
+      btn.disabled = true;
+      btn.style.opacity = '0.5';
+      btn.style.cursor = 'not-allowed';
+      btn.title = 'Coastline data (world-atlas CDN) could not be loaded.';
+      btn.setAttribute('aria-label', 'Coastlines unavailable — data failed to load');
+    }
+    if (typeof state === 'object') state.showCoasts = false;
+    coastGroup.visible = false;
   });
 
 //==============================================================
@@ -1350,6 +1364,36 @@ function updateTooltip(e) {
   tooltipEl.style.display = 'none';
 }
 
+// Touch equivalent: tap near a landmark to reveal its name (hover doesn't exist
+// on touch). Uses a screen-space nearest-within-radius test rather than a pixel-
+// exact raycast, so a fat-finger tap near a small monument still lands.
+const _lmWorld = new THREE.Vector3();
+function identifyLandmarkAt(clientX, clientY) {
+  if (!landmarkGroup.visible) return;
+  const rect = canvas.getBoundingClientRect();
+  const camDir = camera.position.clone().normalize();
+  let best = null, bestD = 44;   // px — roughly a touch target
+  landmarkGroup.children.forEach(ch => {
+    const lm = ch.userData.landmark;
+    if (!lm) return;
+    ch.getWorldPosition(_lmWorld);
+    if (_lmWorld.clone().normalize().dot(camDir) < 0.15) return;   // on the far side
+    const p = _lmWorld.clone().project(camera);
+    if (Math.abs(p.x) > 1 || Math.abs(p.y) > 1) return;
+    const sx = rect.left + (p.x * 0.5 + 0.5) * rect.width;
+    const sy = rect.top + (-p.y * 0.5 + 0.5) * rect.height;
+    const d = Math.hypot(sx - clientX, sy - clientY);
+    if (d < bestD) { bestD = d; best = lm; }
+  });
+  clearTimeout(tooltipEl._t);
+  if (!best) { tooltipEl.style.display = 'none'; return; }
+  tooltipEl.textContent = best.name;
+  tooltipEl.style.display = 'block';
+  tooltipEl.style.left = Math.max(8, Math.min(clientX + 14, window.innerWidth - 160)) + 'px';
+  tooltipEl.style.top = Math.max(8, clientY - 10) + 'px';
+  tooltipEl._t = setTimeout(() => { tooltipEl.style.display = 'none'; }, 2500);
+}
+
 //==============================================================
 // 8. PATH RENDERING
 //==============================================================
@@ -1711,12 +1755,14 @@ canvas.addEventListener('wheel', e => {
 }, { passive: false });
 
 // Touch
-let touchLast = null;
+let touchLast = null, touchStartPos = null, touchMoved = false;
 canvas.addEventListener('touchstart', e => {
   if (e.touches.length === 1) {
     touchLast = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    userRotated = true; state.view = 'free'; setActiveBtn('viewFree');
+    touchStartPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    touchMoved = false;   // decide tap vs drag on touchend
   } else if (e.touches.length === 2) {
+    touchMoved = true;    // a pinch is never a tap
     touchLast = {
       d: Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY)
     };
@@ -1728,13 +1774,33 @@ canvas.addEventListener('touchmove', e => {
     const dx = e.touches[0].clientX - touchLast.x;
     const dy = e.touches[0].clientY - touchLast.y;
     touchLast = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    camTarget.lon -= dx * 0.4;
-    camTarget.lat = Math.max(-89, Math.min(89, camTarget.lat + dy * 0.4));
+    // Only treat it as a drag (and switch to free rotate) past a small threshold,
+    // so a stationary tap can still identify a landmark.
+    if (!touchMoved && touchStartPos &&
+        Math.hypot(e.touches[0].clientX - touchStartPos.x, e.touches[0].clientY - touchStartPos.y) > 8) {
+      touchMoved = true; userRotated = true; state.view = 'free'; setActiveBtn('viewFree');
+    }
+    if (touchMoved) {
+      camTarget.lon -= dx * 0.4;
+      camTarget.lat = Math.max(-89, Math.min(89, camTarget.lat + dy * 0.4));
+    }
   } else if (e.touches.length === 2 && touchLast && touchLast.d !== undefined) {
     const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
     const factor = touchLast.d / d;
     camTarget.dist = Math.max(1.4, Math.min(8, camTarget.dist * factor));
     touchLast = { d };
+  }
+}, { passive: false });
+canvas.addEventListener('touchend', e => {
+  // All fingers lifted after a stationary touch → treat as a tap.
+  if (e.touches.length === 0) {
+    if (!touchMoved && touchStartPos) {
+      // Suppress the synthesized compat mouse events (mousedown/mousemove) that
+      // would otherwise switch to free-rotate and immediately hide the tooltip.
+      e.preventDefault();
+      identifyLandmarkAt(touchStartPos.x, touchStartPos.y);
+    }
+    touchLast = null; touchStartPos = null; touchMoved = false;
   }
 }, { passive: false });
 

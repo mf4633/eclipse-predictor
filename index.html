@@ -28,7 +28,11 @@
   .panel .row b.warm { color: #FF9060; }
 
   #infoPanel { top: 70px; left: 16px; min-width: 260px; max-width: 320px; }
+  #infoPanel .ecname-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
   #infoPanel .ecname { color: #FFD040; font-size: 0.95em; font-family: Georgia, serif; letter-spacing: 1px; margin-bottom: 6px; }
+  .icon-share { flex: none; background: #0E1428; border: 1px solid #1A2A40; color: #B0C8E0; cursor: pointer; padding: 3px 6px; border-radius: 3px; line-height: 0; display: inline-flex; align-items: center; transition: background-color .15s ease, border-color .15s ease, color .15s ease; }
+  .icon-share:hover { background: #1A2848; border-color: #4080D0; color: #FFD040; }
+  #infoShareMsg { color: #80F0A0; font-size: 0.66em; line-height: 1.3; min-height: 0; margin: -2px 0 4px; word-break: break-all; }
   #infoPanel .ectype { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 0.68em; letter-spacing: 1.5px; margin-bottom: 8px; font-family: Georgia, serif; }
   #infoPanel .ectype.T { background: #4A1818; border: 1px solid #FF6040; color: #FFC0A0; }
   #infoPanel .ectype.A { background: #4A3818; border: 1px solid #FFA040; color: #FFD8A0; }
@@ -225,7 +229,13 @@
 </div>
 
 <div id="infoPanel" class="panel">
-  <div class="ecname" id="ecName">&mdash;</div>
+  <div class="ecname-row">
+    <div class="ecname" id="ecName">&mdash;</div>
+    <button id="infoShareBtn" class="icon-share" aria-label="Copy a shareable link to this eclipse" title="Copy share link">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+    </button>
+  </div>
+  <div id="infoShareMsg" aria-live="polite"></div>
   <span class="ectype T" id="ecType">TOTAL</span>
   <div class="row"><span>Date (UTC)</span><b id="ecDate">&mdash;</b></div>
   <div class="row"><span>Greatest eclipse</span><b id="ecTime">&mdash;</b></div>
@@ -1879,20 +1889,21 @@ document.getElementById('openMath').onclick = () => {
   openModal('mathModal');
 };
 
-document.getElementById('shareBtn').onclick = async () => {
-  const msg = document.getElementById('shareMsg');
+async function copyShareLink(msg) {
   try {
     await navigator.clipboard.writeText(location.href);
-    msg.style.color = '#80F0A0';
-    msg.textContent = 'Link copied — ' + location.hash;
+    if (msg) { msg.style.color = '#80F0A0'; msg.textContent = 'Link copied — ' + location.hash; }
   } catch (err) {
     // Clipboard unavailable (e.g. non-secure context) — show the link to copy manually.
-    msg.style.color = '#B0C8E0';
-    msg.textContent = location.href;
+    if (msg) { msg.style.color = '#B0C8E0'; msg.textContent = location.href; }
   }
-  clearTimeout(document.getElementById('shareBtn')._t);
-  document.getElementById('shareBtn')._t = setTimeout(() => { msg.textContent = ''; }, 3500);
-};
+  if (msg) {
+    clearTimeout(msg._t);
+    msg._t = setTimeout(() => { msg.textContent = ''; }, 3500);
+  }
+}
+document.getElementById('shareBtn').onclick = () => copyShareLink(document.getElementById('shareMsg'));
+document.getElementById('infoShareBtn').onclick = () => copyShareLink(document.getElementById('infoShareMsg'));
 
 document.getElementById('locCheck').onclick = () => {
   if (state.idx >= 0) updateLocationResult(dateToJD(ECLIPSES[state.idx].date));

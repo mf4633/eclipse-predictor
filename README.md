@@ -40,3 +40,7 @@ Catalog dates, types, and greatest-eclipse circumstances match NASA's [Five Mill
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+## See also
+
+For a single location and date, the [eclipse sun position calculator](https://pe-calc.com/tools/eclipse-sun-position.html) on pe-calc.com gives altitude, azimuth, and a totality check without the 3D globe.

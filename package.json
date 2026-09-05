@@ -1,0 +1,14 @@
+{
+  "name": "eclipse-predictor",
+  "version": "1.1.0",
+  "description": "Single-file 3D solar eclipse visualizer, 1900-2200, with per-viewpoint contact times and durations.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:e2e": "node tests/e2e/run.mjs"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "playwright-core": "^1.62.1"
+  }
+}

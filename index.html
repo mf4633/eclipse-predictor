@@ -45,9 +45,29 @@
   .leg-row { font-size: 0.7em; color: #8098B0; padding: 2px 0; display: flex; align-items: center; gap: 8px; }
   .swatch { display: inline-block; width: 20px; height: 3px; border-radius: 1px; flex: none; }
   .swatch.dot { width: 10px; height: 10px; border-radius: 50%; }
+  .swatch.ring { width: 10px; height: 10px; border-radius: 50%; border: 2px solid #40E0FF; box-sizing: border-box; }
+  /* Your viewpoint — result card */
+  #locResult .hint { color: #506880; font-style: italic; }
+  #locResult .dim { color: #506880; }
+  .vp-head { display: flex; align-items: baseline; gap: 6px; margin-top: 4px; }
+  .vp-kind { font-family: Georgia, serif; letter-spacing: 1.5px; font-size: 0.95em; }
+  .vp-kind.central { color: #FFD040; }
+  .vp-kind.partial { color: #B0C8E0; }
+  .vp-where { color: #40E0FF; font-family: 'Courier New', monospace; }
+  .vp-big { font-family: Georgia, serif; font-size: 2.1em; line-height: 1.05; color: #FFD040; margin-top: 4px; letter-spacing: 0.5px; font-variant-numeric: tabular-nums; }
+  .vp-big.partial { color: #B0C8E0; }
+  .vp-biglbl { color: #8098B0; margin-bottom: 6px; }
+  .vp-bar { position: relative; height: 7px; background: #1A2A40; border-radius: 2px; margin: 6px 0 2px; overflow: visible; }
+  .vp-bar .vp-tot { position: absolute; top: 0; bottom: 0; background: #FFD040; border-radius: 2px; min-width: 3px; box-shadow: 0 0 6px rgba(255,208,64,0.6); }
+  .vp-bar .vp-peak { position: absolute; top: -3px; bottom: -3px; width: 1px; background: #40E0FF; }
+  .vp-bar-lbl { display: flex; justify-content: space-between; font-family: 'Courier New', monospace; color: #506880; font-size: 0.92em; }
+  #locResult table { border-collapse: collapse; margin-top: 6px; width: 100%; font-family: 'Courier New', monospace; }
+  #locResult td { padding: 1px 4px 1px 0; white-space: nowrap; }
+  #locResult td:last-child { text-align: right; color: #B0C8E0; }
+  #locResult tr.tot td { color: #FFD040; }
   #drawerLegend { display: none; }   /* shown only inside the mobile drawer */
 
-  #viewPanel { top: 70px; right: 16px; min-width: 180px; }
+  #viewPanel { top: 70px; right: 16px; min-width: 180px; max-height: calc(100vh - 150px); overflow-y: auto; scrollbar-width: thin; scrollbar-color: #1A2A40 transparent; }
   .view-btn { display: block; width: 100%; padding: 5px 9px; margin: 2px 0; background: #0E1428; border: 1px solid #1A2A40; color: #B0C8E0; cursor: pointer; font-family: 'Courier New', monospace; font-size: 0.74em; text-align: left; border-radius: 3px; }
   .view-btn:hover { background: #1A2848; border-color: #4080D0; }
   .view-btn.active { background: #1A2848; border-color: #4080D0; color: #FFD040; }
@@ -92,6 +112,8 @@
   #mathModal .sec-vals { color: #80B0E0; font-family: 'Courier New', monospace; font-size: 0.86em; padding: 8px 12px; background: #04060E; border-left: 3px solid #4080D0; margin-top: 8px; border-radius: 0 3px 3px 0; }
   #mathModal .sec-vals .lbl { color: #6080A0; }
   #mathModal .sec-vals .val { color: #FFD040; }
+  #mathModal .sec-vals .sub { color: #4080D0; margin-top: 6px; letter-spacing: 1px; }
+  #mathModal .sec-note { font-size: 0.82em; color: #8098B0; margin: 6px 0 2px; line-height: 1.5; }
   #mathModal .close { float: right; background: none; border: 1px solid #1A2A40; color: #6080A0; padding: 3px 10px; border-radius: 3px; cursor: pointer; font-family: inherit; }
   #mathModal .close:hover { color: #FFD040; border-color: #FFD040; }
   #mathModal .katex { color: #E0E8F0; }
@@ -205,6 +227,8 @@
       <li><b>PLAY</b> &mdash; auto-advance every 2 seconds</li>
       <li><b>Drag</b> the globe to rotate; <b>scroll</b> or pinch to zoom</li>
       <li><b>Hover</b> (or <b>tap</b> on touch) a 3D landmark to see its name</li>
+      <li><b>Click</b> (or tap) anywhere on the globe to set <b>your viewpoint</b> &mdash; the panel lists the four contact times, how long totality / annularity lasts there, and how long the partial phases run. Or type lat/lon and press CHECK.</li>
+      <li><b>How is duration computed?</b> &mdash; opens the math panel at the shadow-cone derivation for your viewpoint, with every intermediate number</li>
       <li><b>Copy share link</b> &mdash; the URL tracks the current eclipse, so any view is bookmarkable</li>
     </ul>
 
@@ -221,6 +245,7 @@
       <li>Eclipse search via <code>SearchGlobalSolarEclipse</code>/<code>NextGlobalSolarEclipse</code> from the same library</li>
       <li><b>Besselian elements</b> (x, y, d, &mu;, &#8467;1, &#8467;2) computed from geocentric Sun &amp; Moon vectors</li>
       <li>Central path = trace of where the shadow axis pierces Earth's surface, sampled every 30 s for &plusmn;3 hours around greatest eclipse</li>
+      <li>Local contacts &amp; durations via <code>SearchLocalSolarEclipse</code>: the observer's distance from the shadow axis is root-found against the umbra / penumbra radii (see the math panel, section 8)</li>
     </ul>
 
     <h3>Accuracy</h3>
@@ -268,6 +293,7 @@
   </div>
   <button class="view-btn" id="locGeo" style="text-align:center;padding:4px;margin:0 0 2px">USE MY LOCATION</button>
   <div id="locResult" aria-live="polite" style="font-size:0.68em;color:#8098B0;line-height:1.45;margin-top:2px;min-height:2.8em"></div>
+  <button class="view-btn" id="openDurMath" style="display:none;text-align:center;padding:4px;margin:4px 0 2px">HOW IS DURATION COMPUTED?</button>
   <h4 style="margin-top:10px">DETAIL</h4>
   <button class="view-btn" id="openMath">SHOW THE MATH</button>
   <button class="view-btn" id="shareBtn">COPY SHARE LINK</button>
@@ -280,6 +306,7 @@
     <div class="leg-row"><span class="swatch dot" style="background:#FFD040"></span> Greatest eclipse</div>
     <div class="leg-row"><span class="swatch" style="background:#B07050;opacity:0.55"></span> Partial-eclipse zone</div>
     <div class="leg-row"><span class="swatch dot" style="background:#FFE0A0"></span> Sub-solar point</div>
+    <div class="leg-row"><span class="swatch ring"></span> Your viewpoint (click the globe)</div>
   </div>
 </div>
 
@@ -340,6 +367,19 @@
         $$ \varphi = \arcsin Z,\qquad \lambda = \operatorname{atan2}(Y, X) $$</div>
       <div class="sec-vals" id="mathPath">&mdash;</div>
     </div>
+
+    <div class="section" id="mathViewpointSection">
+      <div class="sec-title">8 &middot; DURATION AT YOUR VIEWPOINT (shadow-cone geometry)</div>
+      <div class="sec-note">The Moon's shadow is a cone whose axis is the Sun&rarr;Moon line. Take the plane through your position that is perpendicular to that axis: <em>u</em> says where that plane sits along the axis (as a fraction of the Sun&ndash;Moon distance beyond the Moon), <em>r</em> is how far you are from the axis within it, and <em>k</em>, <em>p</em> are the umbra and penumbra radii the cone has reached there (<em>k</em> &lt; 0 means the umbra tip fell short of you &mdash; antumbra, annular). You are in totality while <em>r</em> &lt; |<em>k</em>| and in partial eclipse while <em>r</em> &lt; <em>p</em>. Vectors are geocentric equatorial J2000 from astronomy-engine; the observer vector includes Earth's rotation, so <em>v</em> below is the shadow's speed relative to <b>you</b>, not to Earth's center.</div>
+      <div class="sec-formula">$$ \vec a = \vec M - \vec S \;\;(\text{Sun}\to\text{Moon}),\qquad \vec t = \vec O - \vec M \;\;(\text{Moon}\to\text{observer}) $$
+        $$ u = \frac{\vec a\cdot\vec t}{|\vec a|^2},\qquad r = \left|\,u\,\vec a - \vec t\,\right| $$
+        $$ k = R_{\text{Sun}} - (1+u)\,(R_{\text{Sun}} - R_{\text{Moon}}),\qquad p = -R_{\text{Sun}} + (1+u)\,(R_{\text{Sun}} + R_{\text{Moon}}) $$
+        $$ \text{C1, C4: } r = p \qquad \text{C2, C3: } r = |k| \qquad \text{peak: } r = r_0 = \min_t r(t) $$
+        $$ D_{\text{total}} = t_{C3} - t_{C2},\qquad D_{\text{partial}} = t_{C4} - t_{C1} $$</div>
+      <div class="sec-note">astronomy-engine finds the peak by minimising <em>r</em>(<em>t</em>) and the four contacts by root-finding <em>r &minus; p</em> and <em>r &minus; |k|</em> in time (1&nbsp;s tolerance); the durations are plain differences of those times. The last block is an independent check: near the peak the axis slides past you in nearly a straight line at speed <em>v</em>, so your time inside the umbra is the chord it cuts through the umbra circle divided by <em>v</em>. Chord and <em>v</em> both stretch by the same 1/sin&nbsp;<em>h</em> when projected onto the ground, so Sun altitude cancels out of the duration.</div>
+      <div class="sec-formula">$$ r(t)^2 \approx r_0^2 + v^2\,(t - t_0)^2 \;\Rightarrow\; D_{\text{total}} \approx \frac{2\sqrt{k^2 - r_0^2}}{v},\qquad D_{\text{partial}} \approx \frac{2\sqrt{p^2 - r_0^2}}{v} $$</div>
+      <div class="sec-vals" id="mathViewpoint">&mdash;</div>
+    </div>
   </div>
 </div>
 
@@ -350,6 +390,7 @@
   <div class="leg-row"><span class="swatch dot" style="background:#FFD040"></span> Greatest eclipse</div>
   <div class="leg-row"><span class="swatch" style="background:#B07050; opacity:0.55"></span> Partial-eclipse zone</div>
   <div class="leg-row"><span class="swatch dot" style="background:#FFE0A0"></span> Sub-solar point</div>
+    <div class="leg-row"><span class="swatch ring"></span> Your viewpoint (click the globe)</div>
 </div>
 
 <div id="controlBar" class="panel" role="group" aria-label="Eclipse navigation">
@@ -636,6 +677,51 @@ function formatLocalEclipse(info) {
     totalEnd: fmt(info.total_end),
     partialEnd: fmt(info.partial_end),
     totalitySec: dur,
+  };
+}
+
+// Shadow-cone geometry at one instant for one observer — a public-API re-derivation of
+// astronomy-engine's internal CalcShadow, so the numbers in the math panel are exactly
+// the quantities its local-eclipse search roots against. All lengths in km.
+function shadowAt(time, obs) {
+  const moon = Astronomy.GeoMoon(time);                     // geocentric EQJ, AU
+  const sun  = Astronomy.GeoVector('Sun', time, true);      // geocentric EQJ, AU, with aberration
+  const o    = Astronomy.ObserverVector(time, obs, false);  // geocentric EQJ, AU (includes Earth rotation)
+  const ax = moon.x - sun.x, ay = moon.y - sun.y, az = moon.z - sun.z;   // a: Sun -> Moon
+  const tx = o.x - moon.x,   ty = o.y - moon.y,   tz = o.z - moon.z;     // t: Moon -> observer
+  const aa = ax*ax + ay*ay + az*az;
+  const u  = (ax*tx + ay*ty + az*tz) / aa;
+  const dx = u*ax - tx, dy = u*ay - ty, dz = u*az - tz;
+  const r  = KM_PER_AU * Math.sqrt(dx*dx + dy*dy + dz*dz);
+  const k  = R_SUN - (1 + u) * (R_SUN - MOON_MEAN_RADIUS_KM);
+  const p  = -R_SUN + (1 + u) * (R_SUN + MOON_MEAN_RADIUS_KM);
+  const dSunMoon = KM_PER_AU * Math.sqrt(aa);
+  return { u, r, k, p, dSunMoon, dAxis: u * dSunMoon };
+}
+
+// Everything the "duration at your viewpoint" panel shows, from a LocalSolarEclipseInfo.
+function viewpointGeometry(info, lat, lon) {
+  const obs = new Astronomy.Observer(lat, lon, 0);
+  const t0 = info.peak.time;
+  const s0 = shadowAt(t0, obs);
+  const DT = 60;                                            // s — sample either side of the peak
+  const sp = shadowAt(t0.AddDays(DT / 86400), obs);
+  const sm = shadowAt(t0.AddDays(-DT / 86400), obs);
+  // r(t)^2 = r0^2 + v^2 dt^2  ->  v from the two flanking samples, averaged
+  const v = (Math.sqrt(Math.max(0, sp.r*sp.r - s0.r*s0.r)) + Math.sqrt(Math.max(0, sm.r*sm.r - s0.r*s0.r))) / (2 * DT);
+  const inner = Math.abs(s0.k);
+  const chordIn  = inner > s0.r ? 2 * Math.sqrt(inner*inner - s0.r*s0.r) : 0;
+  const chordOut = s0.p  > s0.r ? 2 * Math.sqrt(s0.p*s0.p   - s0.r*s0.r) : 0;
+  const contacts = [
+    ['C1', 'partial_begin', 'p'], ['C2', 'total_begin', '|k|'], ['peak', 'peak', null],
+    ['C3', 'total_end', '|k|'], ['C4', 'partial_end', 'p'],
+  ].filter(([, key]) => info[key]).map(([label, key, against]) => ({ label, key, against, ev: info[key], s: shadowAt(info[key].time, obs) }));
+  const exactTot = (info.total_begin && info.total_end) ? (info.total_end.time.ut - info.total_begin.time.ut) * 86400 : 0;
+  const exactPar = (info.partial_begin && info.partial_end) ? (info.partial_end.time.ut - info.partial_begin.time.ut) * 86400 : 0;
+  return {
+    s0, v, chordIn, chordOut, contacts, exactTot, exactPar,
+    estTot: v > 0 ? chordIn / v : 0,
+    estPar: v > 0 ? chordOut / v : 0,
   };
 }
 
@@ -1379,7 +1465,7 @@ function updateTooltip(e) {
 // exact raycast, so a fat-finger tap near a small monument still lands.
 const _lmWorld = new THREE.Vector3();
 function identifyLandmarkAt(clientX, clientY) {
-  if (!landmarkGroup.visible) return;
+  if (!landmarkGroup.visible) return false;
   const rect = canvas.getBoundingClientRect();
   const camDir = camera.position.clone().normalize();
   let best = null, bestD = 44;   // px — roughly a touch target
@@ -1396,12 +1482,13 @@ function identifyLandmarkAt(clientX, clientY) {
     if (d < bestD) { bestD = d; best = lm; }
   });
   clearTimeout(tooltipEl._t);
-  if (!best) { tooltipEl.style.display = 'none'; return; }
+  if (!best) { tooltipEl.style.display = 'none'; return false; }
   tooltipEl.textContent = best.name;
   tooltipEl.style.display = 'block';
   tooltipEl.style.left = Math.max(8, Math.min(clientX + 14, window.innerWidth - 160)) + 'px';
   tooltipEl.style.top = Math.max(8, clientY - 10) + 'px';
   tooltipEl._t = setTimeout(() => { tooltipEl.style.display = 'none'; }, 2500);
+  return true;
 }
 
 //==============================================================
@@ -1453,6 +1540,22 @@ function makePenumbraOutline(latLonPts, color = 0x806040) {
   const geo = new THREE.BufferGeometry().setFromPoints(v3);
   const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.45 });
   return new THREE.Line(geo, mat);
+}
+
+// Your viewpoint: a cyan pin (dot + ring) sitting just above the surface.
+const viewpointGroup = new THREE.Group();
+globeGroup.add(viewpointGroup);
+function drawViewpointMarker(lat, lon) {
+  clearGroup(viewpointGroup);
+  if (lat == null || lon == null) return;
+  const dot = makePoint(lat, lon, 0x40E0FF, 90);
+  const ringGeo = new THREE.RingGeometry(0.014, 0.019, 40);
+  const ringMat = new THREE.MeshBasicMaterial({ color: 0x40E0FF, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.position.copy(latLonToVec3(lat, lon, 1.012));
+  ring.lookAt(0, 0, 0);
+  viewpointGroup.add(dot);
+  viewpointGroup.add(ring);
 }
 
 //==============================================================
@@ -1600,21 +1703,41 @@ function eclipseKey(e) {
   const p = n => String(n).padStart(2, '0');
   return `${e.year}-${p(e.month)}-${p(e.day)}`;
 }
+// Hash grammar: #YYYY-MM-DD[@lat,lon] — the optional suffix carries the viewpoint.
 function updateHash(e) {
-  const key = '#' + eclipseKey(e);
+  if (!e) return;
+  let key = '#' + eclipseKey(e);
+  if (state.vp) key += `@${state.vp.lat.toFixed(4)},${state.vp.lon.toFixed(4)}`;
   // replaceState avoids piling up history entries and does not fire hashchange.
   if (location.hash !== key) history.replaceState(null, '', key);
 }
 function findEclipseByKey(key) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key || '');
+  const m = /^(\d{4})-(\d{2})-(\d{2})(?:@.*)?$/.exec(key || '');
   if (!m) return -1;
   const y = +m[1], mo = +m[2], d = +m[3];
   return ECLIPSES.findIndex(e => e.year === y && e.month === mo && e.day === d);
 }
+function viewpointFromKey(key) {
+  const m = /@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)$/.exec(key || '');
+  if (!m) return null;
+  const lat = +m[1], lon = +m[2];
+  if (!(Math.abs(lat) <= 90 && Math.abs(lon) <= 360)) return null;
+  return { lat, lon };
+}
+function applyViewpointFromHash() {
+  const vp = viewpointFromKey(location.hash.replace(/^#/, ''));
+  if (!vp) return false;
+  document.getElementById('locLat').value = vp.lat.toFixed(4);
+  document.getElementById('locLon').value = vp.lon.toFixed(4);
+  return true;
+}
 // Respond to the user editing the hash directly (or a shared link opened later).
 window.addEventListener('hashchange', () => {
-  const idx = findEclipseByKey(location.hash.replace(/^#/, ''));
+  const key = location.hash.replace(/^#/, '');
+  const idx = findEclipseByKey(key);
+  const vpChanged = applyViewpointFromHash();
   if (idx >= 0 && idx !== state.idx) { userRotated = false; loadEclipse(idx); }
+  else if (vpChanged && state.idx >= 0) updateLocationResult(dateToJD(ECLIPSES[state.idx].date));
 });
 
 function computeMagnitude(jd) {
@@ -1670,32 +1793,92 @@ function formatEclipseName(e) {
   return `${typeName} of ${months[e.month - 1]} ${e.day}, ${e.year}`;
 }
 
+function formatTimeS(d) {
+  const h = d.getUTCHours().toString().padStart(2, '0');
+  const m = d.getUTCMinutes().toString().padStart(2, '0');
+  const s = d.getUTCSeconds().toString().padStart(2, '0');
+  return `${h}:${m}:${s}`;
+}
+function formatDurationLong(sec) {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec - h * 3600) / 60);
+  const s = Math.round(sec - h * 3600 - m * 60);
+  return h ? `${h}h ${m}m ${s}s` : `${m}m ${s}s`;
+}
+
+// Reads the lat/lon inputs, computes the local circumstances for the current eclipse,
+// draws the pin, updates the URL, and returns a one-line summary (used by the tap toast).
 function updateLocationResult(jd0) {
   const lat = parseFloat(document.getElementById('locLat').value);
   const lon = parseFloat(document.getElementById('locLon').value);
   const el = document.getElementById('locResult');
   const meta = document.getElementById('ecLocal');
-  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
-    el.textContent = 'Enter lat/lon, then CHECK — e.g. Hornedo 43.3872, -3.7478';
+  const mathBtn = document.getElementById('openDurMath');
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 360) {
+    el.innerHTML = '<span class="hint">Click anywhere on the globe to set your viewpoint, or enter lat/lon and press CHECK.</span>';
     if (meta) meta.textContent = '—';
-    return;
+    state.vp = null; state.vpInfo = null;
+    drawViewpointMarker(null, null);
+    mathBtn.style.display = 'none';
+    if (state.idx >= 0) updateHash(ECLIPSES[state.idx]);
+    return null;
   }
+  state.vp = { lat, lon };
+  drawViewpointMarker(lat, lon);
+  if (state.idx >= 0) updateHash(ECLIPSES[state.idx]);
   const info = localEclipseAt(lat, lon, jd0);
-  const loc = formatLocalEclipse(info);
-  if (!loc) {
-    el.textContent = `${formatLatLon(lat, lon)}: no eclipse at this date.`;
-    if (meta) meta.textContent = '—';
-    return;
+  state.vpInfo = info;
+  const where = formatLatLon(lat, lon);
+  if (!info) {
+    el.innerHTML = `<div class="vp-head"><span class="vp-kind partial">NOT VISIBLE</span><span class="vp-where">${where}</span></div>`
+      + `<div class="vp-biglbl">The Sun is below the horizon here, or this spot is outside the penumbra. Click nearer the shaded band.</div>`;
+    if (meta) meta.textContent = `Your spot: not visible`;
+    mathBtn.style.display = 'none';
+    return `${where} — no eclipse here`;
   }
-  const kindLabel = ({ total: 'TOTAL', annular: 'ANNULAR', partial: 'PARTIAL' })[loc.kind] || loc.kind;
-  if (loc.kind === 'total' || loc.kind === 'annular') {
-    el.innerHTML = `<b style="color:#FFD040">${kindLabel}</b> at ${formatLatLon(lat, lon)}<br>`
-      + `Totality ${formatDuration(loc.totalitySec)} · peak ${loc.peak} UTC`;
-    if (meta) meta.textContent = `Your spot: ${kindLabel}, ${formatDuration(loc.totalitySec)} totality, peak ${loc.peak} UTC`;
-  } else {
-    el.innerHTML = `<b>${kindLabel}</b> only at ${formatLatLon(lat, lon)} · peak ${loc.peak} UTC`;
-    if (meta) meta.textContent = `Your spot: partial eclipse, peak ${loc.peak} UTC`;
+  const kindLabel = ({ total: 'TOTAL', annular: 'ANNULAR', partial: 'PARTIAL' })[info.kind] || info.kind.toUpperCase();
+  const central = info.kind === 'total' || info.kind === 'annular';
+  const phase = info.kind === 'annular' ? 'annularity' : 'totality';
+  const totSec = (info.total_begin && info.total_end) ? (info.total_end.time.ut - info.total_begin.time.ut) * 86400 : 0;
+  const parSec = (info.partial_begin && info.partial_end) ? (info.partial_end.time.ut - info.partial_begin.time.ut) * 86400 : 0;
+  const row = (label, ev, strong) => {
+    if (!ev) return '';
+    const below = ev.altitude < 0 ? ' <span class="dim">(Sun below horizon)</span>' : '';
+    const t = formatTimeS(ev.time.date);
+    return `<tr><td>${label}</td><td>${strong ? `<b>${t}</b>` : t}${below}</td></tr>`;
+  };
+  // Timeline strip: C1..C4 spans the bar; the totality window sits inside it; a cyan tick marks the peak.
+  let bar = '';
+  if (info.partial_begin && info.partial_end && parSec > 0) {
+    const t1 = info.partial_begin.time.ut;
+    const pct = (ut) => Math.max(0, Math.min(100, (ut - t1) / (parSec / 86400) * 100));
+    const totSeg = (info.total_begin && info.total_end)
+      ? `<div class="vp-tot" style="left:${pct(info.total_begin.time.ut).toFixed(2)}%;width:${(pct(info.total_end.time.ut) - pct(info.total_begin.time.ut)).toFixed(2)}%"></div>` : '';
+    const label = central
+      ? `${phase} ${formatDurationLong(totSec)} inside partial phases ${formatDurationLong(parSec)}`
+      : `partial eclipse lasting ${formatDurationLong(parSec)}`;
+    bar = `<div class="vp-bar" role="img" aria-label="Timeline: ${label}">${totSeg}<div class="vp-peak" style="left:${pct(info.peak.time.ut).toFixed(2)}%"></div></div>`
+        + `<div class="vp-bar-lbl"><span>C1 ${formatTimeS(info.partial_begin.time.date).slice(0, 5)}</span><span>${formatDurationLong(parSec)}</span><span>${formatTimeS(info.partial_end.time.date).slice(0, 5)} C4</span></div>`;
   }
+  const big = central
+    ? `<div class="vp-big">${formatDurationLong(totSec)}</div><div class="vp-biglbl">of ${phase} here · Sun ${info.peak.altitude.toFixed(1)}° above the horizon at peak</div>`
+    : `<div class="vp-big partial">${(info.obscuration * 100).toFixed(0)}%</div><div class="vp-biglbl">of the Sun covered at peak · no ${phase} here · Sun ${info.peak.altitude.toFixed(1)}° up</div>`;
+  el.innerHTML = `<div class="vp-head"><span class="vp-kind ${central ? 'central' : 'partial'}">${kindLabel}</span><span class="vp-where">${where}</span></div>`
+    + big + bar
+    + `<table>`
+    + row('C1 partial begins', info.partial_begin)
+    + row(`C2 ${phase} begins`, info.total_begin)
+    + row('Peak', info.peak, true)
+    + row(`C3 ${phase} ends`, info.total_end)
+    + row('C4 partial ends', info.partial_end)
+    + (central ? `<tr class="tot"><td>${phase[0].toUpperCase() + phase.slice(1)}</td><td><b>${formatDurationLong(totSec)}</b></td></tr>` : '')
+    + `<tr><td>Partial phases C1→C4</td><td>${formatDurationLong(parSec)}</td></tr>`
+    + `<tr><td>Obscuration</td><td>${(info.obscuration * 100).toFixed(1)}%</td></tr>`
+    + `</table><span class="dim">Times UTC · contacts by astronomy-engine, ±1 s</span>`;
+  const summary = central ? `${kindLabel}, ${formatDuration(totSec)} ${phase}` : `partial, ${(info.obscuration * 100).toFixed(0)}% obscured`;
+  if (meta) meta.textContent = `Your spot: ${summary}, peak ${formatTimeS(info.peak.time.date)} UTC`;
+  mathBtn.style.display = 'block';
+  return `${where} — ${summary}`;
 }
 
 //==============================================================
@@ -1737,26 +1920,62 @@ function updateCamera() {
 let dragging = false;
 let lastX = 0, lastY = 0;
 
+let mouseDownPos = null;   // non-null until the pointer moves far enough to count as a drag
 canvas.addEventListener('mousedown', e => {
+  if (e.button !== 0) return;
   dragging = true;
   lastX = e.clientX; lastY = e.clientY;
+  mouseDownPos = { x: e.clientX, y: e.clientY };
   canvas.classList.add('dragging');
-  userRotated = true;
-  state.view = 'free';
-  setActiveBtn('viewFree');
 });
 window.addEventListener('mousemove', e => {
   if (dragging) {
     const dx = e.clientX - lastX;
     const dy = e.clientY - lastY;
     lastX = e.clientX; lastY = e.clientY;
-    camTarget.lon -= dx * 0.4;
-    camTarget.lat = Math.max(-89, Math.min(89, camTarget.lat + dy * 0.4));
+    // A plain click must not switch view modes — only a real drag does.
+    if (mouseDownPos && Math.hypot(e.clientX - mouseDownPos.x, e.clientY - mouseDownPos.y) > 4) {
+      mouseDownPos = null;
+      userRotated = true; state.view = 'free'; setActiveBtn('viewFree');
+    }
+    if (!mouseDownPos) {
+      camTarget.lon -= dx * 0.4;
+      camTarget.lat = Math.max(-89, Math.min(89, camTarget.lat + dy * 0.4));
+    }
   } else {
     updateTooltip(e);
   }
 });
-window.addEventListener('mouseup', () => { dragging = false; canvas.classList.remove('dragging'); });
+window.addEventListener('mouseup', e => {
+  const wasClick = dragging && mouseDownPos !== null;
+  dragging = false; mouseDownPos = null;
+  canvas.classList.remove('dragging');
+  if (wasClick && e.target === canvas) placeViewpointAt(e.clientX, e.clientY);
+});
+
+// Map-select: convert a screen point on the globe to lat/lon and make it the viewpoint.
+function placeViewpointAt(clientX, clientY) {
+  if (state.idx < 0) return;
+  const rect = canvas.getBoundingClientRect();
+  mouseNDC.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+  mouseNDC.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(mouseNDC, camera);
+  const hits = raycaster.intersectObject(earthMesh, false);
+  if (!hits.length) return;
+  const p = hits[0].point.normalize();     // globeGroup is unrotated, so world == globe frame
+  const lat = Math.asin(Math.max(-1, Math.min(1, p.y))) * RAD;
+  const lon = Math.atan2(-p.z, p.x) * RAD;
+  document.getElementById('locLat').value = lat.toFixed(4);
+  document.getElementById('locLon').value = lon.toFixed(4);
+  const summary = updateLocationResult(dateToJD(ECLIPSES[state.idx].date));
+  // Brief toast at the click point so the result is visible even when the panel is collapsed.
+  clearTimeout(tooltipEl._t);
+  tooltipEl.textContent = summary || `${formatLatLon(lat, lon)}`;
+  tooltipEl.style.display = 'block';
+  tooltipEl.style.left = Math.max(8, Math.min(clientX + 14, window.innerWidth - 260)) + 'px';
+  tooltipEl.style.top = Math.max(8, clientY - 10) + 'px';
+  tooltipEl._t = setTimeout(() => { tooltipEl.style.display = 'none'; }, 3000);
+}
 
 canvas.addEventListener('wheel', e => {
   e.preventDefault();
@@ -1808,7 +2027,7 @@ canvas.addEventListener('touchend', e => {
       // Suppress the synthesized compat mouse events (mousedown/mousemove) that
       // would otherwise switch to free-rotate and immediately hide the tooltip.
       e.preventDefault();
-      identifyLandmarkAt(touchStartPos.x, touchStartPos.y);
+      if (!identifyLandmarkAt(touchStartPos.x, touchStartPos.y)) placeViewpointAt(touchStartPos.x, touchStartPos.y);
     }
     touchLast = null; touchStartPos = null; touchMoved = false;
   }
@@ -1905,6 +2124,12 @@ async function copyShareLink(msg) {
 document.getElementById('shareBtn').onclick = () => copyShareLink(document.getElementById('shareMsg'));
 document.getElementById('infoShareBtn').onclick = () => copyShareLink(document.getElementById('infoShareMsg'));
 
+document.getElementById('openDurMath').onclick = () => {
+  populateMath();
+  openModal('mathModal');
+  const sec = document.getElementById('mathViewpointSection');
+  if (sec) requestAnimationFrame(() => sec.scrollIntoView({ block: 'start', behavior: reduceMotionMQ.matches ? 'auto' : 'smooth' }));
+};
 document.getElementById('locCheck').onclick = () => {
   if (state.idx >= 0) updateLocationResult(dateToJD(ECLIPSES[state.idx].date));
 };
@@ -1930,6 +2155,54 @@ document.getElementById('locGeo').onclick = () => {
 // Default: Hornedo, Cantabria — Aug 2026 eclipse base
 document.getElementById('locLat').value = '43.3872';
 document.getElementById('locLon').value = '-3.7478';
+
+function viewpointMathRows(rows) {
+  if (!state.vp) return rows([['Viewpoint', 'none set — click the globe or enter lat/lon, then CHECK']]);
+  const { lat, lon } = state.vp;
+  const info = state.vpInfo;
+  if (!info) return rows([['Viewpoint', `${lat.toFixed(4)}°, ${lon.toFixed(4)}°`], ['Result', 'no eclipse visible here on this date']]);
+  const g = viewpointGeometry(info, lat, lon);
+  const s0 = g.s0;
+  const inner = Math.abs(s0.k);
+  const central = info.kind === 'total' || info.kind === 'annular';
+  const phase = info.kind === 'annular' ? 'annularity' : 'totality';
+  const km = (x, d = 2) => `${x.toFixed(d)} km`;
+  const sec = (x) => `${x.toFixed(1)} s`;
+  const out = [
+    ['Viewpoint',             `${lat.toFixed(4)}°, ${lon.toFixed(4)}° (sea level)`],
+    ['Kind',                  `${info.kind.toUpperCase()} — obscuration ${(info.obscuration * 100).toFixed(2)}%, Sun altitude ${info.peak.altitude.toFixed(2)}° at peak`],
+    ['Peak t₀',               `${formatTimeS(info.peak.time.date)} UTC (minimum of r(t))`],
+    ['|a| Sun–Moon',          km(s0.dSunMoon, 0)],
+    ['u',                     `${s0.u.toFixed(6)}  →  your plane lies ${km(s0.dAxis, 0)} beyond the Moon`],
+    ['r₀ (miss distance)',    km(s0.r)],
+    ['k (umbra radius)',      `${km(s0.k)}  ${s0.k < 0 ? '(negative: antumbra — annular)' : '(positive: umbra reaches your plane)'}  → shadow diameter ${km(2 * inner, 1)}`],
+    ['p (penumbra radius)',   km(s0.p)],
+    ['Inside umbra?',         `r₀ ${s0.r < inner ? '<' : '≥'} |k|  ⇒  ${s0.r < inner ? (s0.k < 0 ? 'ANNULAR' : 'TOTAL') : 'PARTIAL only'}`],
+  ];
+  // Contact table with the root-finding residuals
+  out.push(['<span class="sub">CONTACTS (astronomy-engine root-finding, ±1 s)</span>', '']);
+  g.contacts.forEach(c => {
+    const t = formatTimeS(c.ev.time.date);
+    const alt = `h=${c.ev.altitude.toFixed(1)}°`;
+    if (c.against === 'p') out.push([`${c.label} r = p`, `${t} UTC  ${alt}  r=${c.s.r.toFixed(2)}  p=${c.s.p.toFixed(2)}  (Δ ${(c.s.r - c.s.p).toFixed(2)} km)`]);
+    else if (c.against === '|k|') out.push([`${c.label} r = |k|`, `${t} UTC  ${alt}  r=${c.s.r.toFixed(2)}  |k|=${Math.abs(c.s.k).toFixed(2)}  (Δ ${(c.s.r - Math.abs(c.s.k)).toFixed(2)} km)`]);
+    else out.push([`${c.label} min r`, `${t} UTC  ${alt}  r=${c.s.r.toFixed(2)}`]);
+  });
+  if (central) out.push([`D_${phase} = C3 − C2`, `${sec(g.exactTot)} = ${formatDurationLong(g.exactTot)}`]);
+  out.push(['D_partial = C4 − C1', `${sec(g.exactPar)} = ${formatDurationLong(g.exactPar)}`]);
+  // Chord check
+  out.push(['<span class="sub">CHORD CHECK (straight-line approximation near the peak)</span>', '']);
+  out.push(['v (axis speed past you)', `${g.v.toFixed(4)} km/s  =  ${(g.v * 3600).toFixed(0)} km/h, from r(t₀ ± 60 s)`]);
+  if (central) {
+    out.push([`2√(k² − r₀²)`, `2√(${inner.toFixed(2)}² − ${s0.r.toFixed(2)}²) = ${km(g.chordIn)}`]);
+    out.push([`D_${phase} ≈ chord / v`, `${g.chordIn.toFixed(2)} / ${g.v.toFixed(4)} = ${sec(g.estTot)}  vs exact ${sec(g.exactTot)}  (Δ ${(g.estTot - g.exactTot).toFixed(1)} s)`]);
+  } else {
+    out.push([`2√(k² − r₀²)`, `k² − r₀² < 0 — the umbra never reaches you, so no ${phase}`]);
+  }
+  out.push([`2√(p² − r₀²)`, `2√(${s0.p.toFixed(2)}² − ${s0.r.toFixed(2)}²) = ${km(g.chordOut)}`]);
+  out.push(['D_partial ≈ chord / v', `${g.chordOut.toFixed(2)} / ${g.v.toFixed(4)} = ${sec(g.estPar)}  vs exact ${sec(g.exactPar)}  (Δ ${(g.estPar - g.exactPar).toFixed(0)} s — the axis curves and v drifts over ~3 h)`]);
+  return rows(out);
+}
 
 function populateMath() {
   if (state.idx < 0 || state.idx >= ECLIPSES.length) return;
@@ -1994,6 +2267,8 @@ function populateMath() {
     ['Computed type', e.type + ` — ${({T:'TOTAL',A:'ANNULAR',H:'HYBRID',P:'PARTIAL'})[e.type]}`],
     ['Reason',         classExplain],
   ]);
+
+  document.getElementById('mathViewpoint').innerHTML = viewpointMathRows(rows);
 
   document.getElementById('mathPath').innerHTML = rows([
     ['Sub-solar point',                `${sub.lat.toFixed(2)}°, ${sub.lon.toFixed(2)}°`],
@@ -2215,6 +2490,7 @@ generateEclipses(
     yEl.max = ECLIPSES[ECLIPSES.length - 1].year;
     // Honor a shared deep-link (#YYYY-MM-DD); else default to 2024-04-08; else midpoint.
     let idx = findEclipseByKey(location.hash.replace(/^#/, ''));
+    applyViewpointFromHash();   // #YYYY-MM-DD@lat,lon overrides the default pin
     if (idx < 0) idx = ECLIPSES.findIndex(e => e.year === 2024 && e.month === 4 && e.day === 8);
     if (idx < 0) idx = Math.floor(ECLIPSES.length / 2);
     loadEclipse(idx);

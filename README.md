@@ -40,6 +40,8 @@ Catalog dates, types, and greatest-eclipse circumstances match NASA's [Five Mill
 npm install
 npm run test:e2e          # headless Chromium (SwiftShader WebGL) drives the real page
 E2E_BROWSER=webkit npm run test:e2e
+# drive the boardgaminghub.com copy (merged hub page) from a sibling checkout:
+E2E_ROOT=../board-gaming E2E_PAGE=/EclipsePredictor.html npm run test:e2e
 ```
 
 The suite deep-links a known site (Hornedo, 2026-08-12), checks the contact table, headline duration, timeline strip, and math panel, verifies that clicking the globe places the pin under the cursor while dragging does not, exercises partial-only and annular sites, and taps the globe on a phone-sized viewport. It skips cleanly when playwright-core or a browser is missing.

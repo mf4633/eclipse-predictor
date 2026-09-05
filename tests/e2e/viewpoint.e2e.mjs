@@ -11,13 +11,14 @@
 //   5. The touch path (tap) places a viewpoint on a phone-sized viewport.
 //   6. No uncaught page errors anywhere along the way.
 
-import { waitReady } from './harness.mjs';
+import { waitReady, quiet, PAGE } from './harness.mjs';
 
 const HORNEDO = '43.3872,-3.7478';
 
 export default async function viewpointTests({ browser, port, t }) {
-  const base = `http://127.0.0.1:${port}/index.html`;
+  const base = `http://127.0.0.1:${port}${PAGE}`;
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  await quiet(ctx);
   const page = await ctx.newPage();
   const pageErrors = [];
   page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 300)));
@@ -155,14 +156,22 @@ export default async function viewpointTests({ browser, port, t }) {
 
   // ---- 5. touch path on a phone viewport ----
   const mctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+  await quiet(mctx);
   const mpage = await mctx.newPage();
   const mErrors = [];
   mpage.on('pageerror', (e) => mErrors.push(String(e).slice(0, 300)));
   await mpage.goto(`${base}#2026-08-12`);
   await waitReady(mpage);
   await mpage.waitForTimeout(600);
-  const mbox = await mpage.$eval('#globeCanvas', el => { const r = el.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; });
-  await mpage.touchscreen.tap(mbox.x + mbox.w / 2, mbox.y + mbox.h / 2);
+  // Tap in the clear band between the info panel and the control bar (both are fixed overlays
+  // that sit over the canvas on a phone; where they land depends on the host page's chrome).
+  const tapAt = await mpage.evaluate(() => {
+    const c = document.getElementById('globeCanvas').getBoundingClientRect();
+    const info = document.getElementById('infoPanel').getBoundingClientRect();
+    const bar = document.getElementById('controlBar').getBoundingClientRect();
+    return { x: c.left + c.width / 2, y: (info.bottom + bar.top) / 2 };
+  });
+  await mpage.touchscreen.tap(tapAt.x, tapAt.y);
   await mpage.waitForFunction(() => document.getElementById('locLat').value !== '43.3872', null, { timeout: 5000 }).catch(() => {});
   const mlat = await mpage.$eval('#locLat', el => el.value);
   t.ok(mlat !== '43.3872' && Number.isFinite(parseFloat(mlat)), `tap on the globe placed a viewpoint (lat ${mlat})`);

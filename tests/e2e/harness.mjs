@@ -8,7 +8,7 @@
 
 import { createServer } from 'http';
 import { readFileSync, existsSync, readdirSync } from 'fs';
-import { extname, join, dirname } from 'path';
+import { extname, join, dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { homedir } from 'os';
 
@@ -19,7 +19,11 @@ const MIME = {
   '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml',
 };
 
-export function startServer(root = ROOT) {
+// E2E_ROOT=<dir> serves a different directory (e.g. the board-gaming hub checkout) and
+// E2E_PAGE=<path> names the page under test there (default /index.html).
+export const PAGE = process.env.E2E_PAGE || '/index.html';
+export function startServer(root = process.env.E2E_ROOT || ROOT) {
+  root = resolve(root);   // normalise separators so the containment check below works on Windows
   const server = createServer((req, res) => {
     let p = decodeURIComponent((req.url || '/').split('?')[0]);
     if (p.endsWith('/')) p += 'index.html';
@@ -80,6 +84,11 @@ export async function getBrowserLauncher(engine = process.env.E2E_BROWSER || 'ch
   const executablePath = process.env.E2E_CHROMIUM || findChromium(chromium);
   if (!executablePath) return { skip: true, reason: 'no Chromium binary found (run: npx playwright install chromium)' };
   return { skip: false, chromium, executablePath, engine: 'chromium', launchArgs: ['--no-sandbox', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] };
+}
+
+// Block third-party beacons so a test run never records a pageview or loads the comments widget.
+export async function quiet(ctx) {
+  await ctx.route(/hc-refactored\.fly\.dev|giscus\.app/, (r) => r.abort());
 }
 
 // Wait until the page has computed its catalog and hidden the loading overlay.
